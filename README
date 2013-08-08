@@ -1,0 +1,23 @@
+This is a collection of scripts and modules to do various
+accounting and billing stuff on the OSDC infrastructure using
+pyhton.
+
+NovaUserReporting - It queries nova db and uses PollGluster to
+    generate user usage statistics and email them as a csv.
+    IT also is used to push to our Salesforce.com based invoice
+    system.
+
+PollGluster - It is a poller that basically parses
+    gluster volume USER-HOME into a table, then queries it
+    when needed
+
+UnitConversion - Found it on StackExchange, its useful for
+    converting disk units.
+
+SalesforceOCC -  Module built around Beatbox to allow us 
+    to generate info about users in Salesforce and push
+    invoicing.   Work in progress.
+
+
+cloud_report.py - Main command to generate usage/billing reports
+

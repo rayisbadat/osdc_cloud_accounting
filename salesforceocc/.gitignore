@@ -1,0 +1,8 @@
+.*
+*.pyc
+sfconfig.*
+!.gitignore
+MANIFEST
+BUILD
+doc
+examples

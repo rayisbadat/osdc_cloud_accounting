@@ -1,0 +1,16 @@
+Tasks:
+  If retrieve finds one entry, it doesnt load it as an entry, it just loads the values into itself.  Need to append a blank '' entry to the ids in retrieve to force compliance.
+
+WhatID = This is the ID of the Case Number entry.
+Subject = "$CLOUD Invoice of %M.%Y"
+
+
+FLOW>
+    * We will need to map UserName/TenantName to a CaseNumber (acct number).  
+    * query "Case" for it
+    * Use that to upsert a new "Task", git the Id of this task,
+    * upsert the "Task" with the corehrs, storage, and billing costs
+    * Ooptional use that to gen report (Need to talk with Walt)
+
+
+

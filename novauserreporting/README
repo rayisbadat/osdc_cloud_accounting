@@ -1,0 +1,6 @@
+Dependencies:
+sqlalchemy
+beatbox >= 0.92
+keystoneclient 
+novalclient (>=Grizzly)
+

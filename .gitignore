@@ -1,0 +1,6 @@
+.*
+*.pyc
+sfconfig.*
+!.gitignore
+MANIFEST
+BUILD
