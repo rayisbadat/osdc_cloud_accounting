@@ -4,3 +4,4 @@ sfconfig.*
 !.gitignore
 MANIFEST
 BUILD
+admin_auth
