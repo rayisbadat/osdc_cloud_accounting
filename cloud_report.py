@@ -1,4 +1,10 @@
 from novauserreporting import NovaUserReporting
+import os
+import sys
+import getopt
+import ConfigParser
+import pprint
+from datetime import datetime, timedelta
 
 def weekbegend(year, week):
     """
