@@ -34,86 +34,24 @@ from email.mime.multipart import MIMEMultipart
 from email.encoders import encode_base64
 import mimetypes
 
+from salesforceocc import SalesForceOCC
+
 
 
 class UserUsageStat:
     """This is an object to store a users info"""
-    def __init__(self, username, corehrs=0, du=0):
+    def __init__(self, username, tenant=None, corehrs=0, du=0):
         self.username=username
+        self.tenant=tenant
         self.corehrs=corehrs
         self.du=du
-
-
-class TenantsStats:
-    """Class stores the tenants users"""
-    def __init__(self, name, uuid=None):
-        self.name=name
-        self.uuid=uuid
-        self.members={}
-        self.corehrs=0
-        self.du=0
-
-    def add_member(self, username, corehrs=0, du=0):
-        self.members[username] = UserUsageStat(username=username, corehrs=corehrs, du=du)
-
-    def set_tenant_stat(self, corehrs=0, du=0):
-        self.corehrs = corehrs
-        self.du = du
-
-    def update_member(self, username, corehrs=None, du=None):
-        if corehrs is not None:
-            self.members[username].corehrs=corehrs
-        if du is not None:
-            self.members[username].du=du
-
-    def list_members(self):
-        members_list = []
-        for key,value in self.members.items():
-            members_list.append(key)
-        return members_list
-
-    def sum_tenant_corehrs(self):
-        corehrs=0
-        for key,value in self.members.items():
-            if value.corehrs is not None:
-                corehrs += value.corehrs
-        return corehrs
-
-    def sum_tenant_du(self):
-        du=0
-        for key,value in self.members.items():
-            if value.du is not None:
-                du += value.du
-        return du
-
-    def get_tenant_du(self):
-        return self.du
-
-    def get_tenant_corehrs(self):
-        return self.corehrs
-
-    def get_csv(self,tenant_reporting=True):
-        csv = []
-        if tenant_reporting is True:
-            csv.append( "(%s),,%s,%s" % (self.name, self.get_tenant_corehrs(),
-                self.get_tenant_du()) )
-            for key,value in self.members.items():
-                csv.append( "(%s),%s,%s,%s" % (self.name, key, value.corehrs, value.du) )
-        else:
-            for key,value in self.members.items():
-                if self.name == key:
-                    csv.append( "(%s),%s,%s,%s" % (self.name, key, value.corehrs, value.du) )
-            
-
-        return csv
-
 
 class NovaUserReporting:
     def __init__(self,config_file):
         """INit the function"""
         #Dict of settings
         self.settings={}
-        self.cloud_tenants = {}
+        self.cloud_users = {}
 
         #Stores the csv
         self.csv = []
@@ -136,12 +74,6 @@ class NovaUserReporting:
         self.override_nova_creds_with_env('OS_PASSWORD')
         self.override_nova_creds_with_env('OS_AUTH_URL')
         self.override_nova_creds_with_env('OS_TENANT_NAME')
-
-        #Should we do tenant auditing
-        self.tenant_reporting = True
-
-    def set_tenant_reporting(self,value):
-        self.tenant_reporting = value
     
     def override_nova_creds_with_env(self,keyname):
        #Get the nova auth stuff if not already
@@ -461,7 +393,7 @@ class NovaUserReporting:
         
 
 
-    def get_stats(self, start_date=None, end_date=None):
+    def load_stats(self, start_date=None, end_date=None):
         #Set the time range to pull reports for
         self.set_time_range(start_date = start_date, end_date = end_date)
 
@@ -475,22 +407,8 @@ class NovaUserReporting:
 
         #Loop through tenants
         for tenant in self.tenants:
-
-            try:
-                self.cloud_tenants[tenant] = TenantsStats(tenant.name)
-            except KeyError:
-                sys.stderr.write("ERROR: Duplicate Tenant\n")
-                sys.exit(1)
-
             #Find users in a tenant
-            ###FIXME do we save the tenant as its own user??
             tenant_users = tenant.list_users()
-            tenant_corehrs = self.get_corehrs(tenant_id=tenant.id)
-            tenant_du = self.get_du(
-                path="%s/%s"%(self.settings['gprefix'],tenant.name), 
-                start_date=self.start_time, end_date=self.cieling_time)
-            self.cloud_tenants[tenant].set_tenant_stat(corehrs=tenant_corehrs, du=tenant_du)
-
             for user in tenant_users:
                 corehrs = self.get_corehrs(user_id=user.id, tenant_id=tenant.id) 
                 #Adjust paths for real tenants...
@@ -501,14 +419,13 @@ class NovaUserReporting:
                     du = self.get_du(
                         path="%s/%s/%s"%(self.settings['gprefix'], tenant.name, user.name), 
                         start_date=self.start_time, end_date=self.cieling_time)
-
-                self.cloud_tenants[tenant].add_member(username=user.name, corehrs=corehrs, du=du)
+                self.cloud_users[user.name]=UserUsageStat(username=user.name, tenant=tenant.name,corehrs=corehrs, du=du)
   
     def gen_csv(self):
         self.csv = []
-        self.csv.extend(["Tenant, User, Core Hours (H), Disk Usage (GB)"])
-        for tenant in self.cloud_tenants:
-            self.csv.extend(self.cloud_tenants[tenant].get_csv(tenant_reporting=self.tenant_reporting))
+        self.csv.extend(["User, Core Hours (H), Disk Usage (GB)"])
+        for cloud_user, stats in self.cloud_users.items():
+            self.csv.extend( ["%s,%s,%s" %(cloud_user, stats.corehrs, stats.du)] )
         
     def print_csv(self):
         #print "Tenant, User, Core Hours (H), Disk Usage (GB)"
@@ -558,6 +475,34 @@ class NovaUserReporting:
         s.sendmail(msg['From'] ,msg.get_all('TO'), msg.as_string())
         s.quit()
 
+
+    def push_to_sf(self):
+        """ Take list of users on cloud, push as many as you can to SF """
+        sf = SalesForceOCC()
+        sf.login(username=self.settings['sfusername'], password=self.settings['sfpassword'], testing=True)
+        sf.load_contacts_from_campaign(campaign=self.settings['cloud'])
+        for cloud_user, stats in self.cloud_users.items():
+            try:
+                case_id = sf.get_case_id(campaign=self.settings['cloud'],contact_id=sf.contacts[cloud_user]['id'])
+            except KeyError:
+                case_id = None
+
+            try:
+                saver_result = sf.create_invoice_task(
+                    campaign=self.settings['cloud'], contact_id=sf.contacts[cloud_user]['id'],
+                    case_id=case_id, corehrs=stats.corehrs, du=stats.du,
+                    start_date=self.start_time , end_date=self.end_time)
+                if case_id is None:
+                    sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" %(cloud_user, saver_result))
+            except KeyError:
+                sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" %(cloud_user))
+
+
+
+        
+                
+        
+
 def weekbegend(year, week):
     """
     Calcul du premier et du dernier jour de la semaine ISO
@@ -577,79 +522,3 @@ def weekbegend(year, week):
     delta2 = timedelta(days=6-delta_days, weeks=delta_weeks)
     weekend = d + delta2
     return weekbeg, weekend
-
-
-if __name__ == "__main__":
-
-    #some default flags
-    noprint = False
-    email = False
-    tenant_reporting = False
-    
-    #Load in the CLI flags
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "s:e:c:", ["start=", "end=", 
-            "cloud=","thismonth","lastmonth", "thisweek","lastweek","now",
-            "noprint","email","tenants"])
-    except getopt.GetoptError:
-        sys.stderr.write("ERROR: Getopt\n")
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt in ("-s", "--start",):
-            start_date = arg
-        elif opt in ("-end", "--end"):
-            end_date = arg
-        elif opt in ("-c", "--cloud"):
-            pass
-        elif opt in ("--thismonth"):
-            now = datetime.now()
-            start_date = now.strftime("%Y-%m-01 00:00:00")
-            end_date = (now.replace(month=now.month+1, day=1) - timedelta(days=1)).strftime("%Y-%m-%d 23:59:59")
-        elif opt in ("--lastmonth"):
-            now = datetime.now()
-            date = now.replace(day=1) - timedelta(days=1)
-            start_date = date.strftime("%Y-%m-01 00:00:00")
-            end_date = (date.replace(month=date.month+1, day=1) - timedelta(days=1)).strftime("%Y-%m-%d 23:59:59")
-        elif opt in ("--thisweek"):
-            now = datetime.now()
-            year = int( now.strftime("%Y") )
-            week = int( now.strftime("%U") )+1
-            weekbeg, weekend = weekbegend( year, week)
-            start_date = weekbeg.strftime("%Y-%m-%d 00:00:00")
-            end_date = weekend.strftime("%Y-%m-%d 23:59:59")
-        elif opt in ("--lastweek"):
-            now = datetime.now()
-            year = int( now.strftime("%Y") )
-            week = int( now.strftime("%U") )
-            weekbeg, weekend = weekbegend( year, week)
-            start_date = weekbeg.strftime("%Y-%m-%d 00:00:00")
-            end_date = weekend.strftime("%Y-%m-%d 23:59:59")
-        elif opt in ("--now"):
-            now = datetime.now()
-            start_date = now.strftime("%Y-%m-%d %H:%M:%S")
-            end_date = now.strftime("%Y-%m-%d %H:%M:%S")
-        elif opt in ("--noprint"):
-            noprint = True
-        elif opt in ("--email"):
-            email = True
-        elif opt in ("--tenants"):
-            #This prints the tenants along with the users
-            tenant_reporting = True
-        
-        
-
-    #initialize the clase with credentials
-    nova_user_reports = NovaUserReporting(".settings")
-    nova_user_reports.set_tenant_reporting(tenant_reporting)
-    nova_user_reports.get_stats(start_date=start_date, end_date=end_date)
-    nova_user_reports.gen_csv()
-
-
-
-    if noprint is False:
-        nova_user_reports.print_csv()
-
-    if email is True:
-        nova_user_reports.email_csv()
-
-

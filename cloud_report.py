@@ -33,12 +33,13 @@ if __name__ == "__main__":
     noprint = False
     email = False
     tenant_reporting = False
+    sf = False
     
     #Load in the CLI flags
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "s:e:c:", ["start=", "end=", 
+        opts, args = getopt.getopt(sys.argv[1:], "", ["start=", "end=", 
             "cloud=","thismonth","lastmonth", "thisweek","lastweek","now",
-            "noprint","email","tenants"])
+            "noprint","email","tenants","sf"])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -83,13 +84,14 @@ if __name__ == "__main__":
         elif opt in ("--tenants"):
             #This prints the tenants along with the users
             tenant_reporting = True
+        elif opt in ("--sf"):
+            sf = True
         
         
 
     #initialize the clase with credentials
     nova_user_reports = NovaUserReporting(".settings")
-    nova_user_reports.set_tenant_reporting(tenant_reporting)
-    nova_user_reports.get_stats(start_date=start_date, end_date=end_date)
+    nova_user_reports.load_stats(start_date=start_date, end_date=end_date)
     nova_user_reports.gen_csv()
 
 
@@ -99,5 +101,8 @@ if __name__ == "__main__":
 
     if email is True:
         nova_user_reports.email_csv()
+
+    if sf is True:
+        nova_user_reports.push_to_sf()
 
 
