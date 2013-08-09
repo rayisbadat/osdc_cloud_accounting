@@ -1,4 +1,4 @@
-import os 
+import os
 import sys
 import getopt
 import ConfigParser
@@ -15,7 +15,7 @@ from keystoneclient.exceptions import AuthorizationFailure, Unauthorized
 #Nova calls
 ### I am worried about the level of control this has
 from novaclient.v1_1 import client as nc_client
-from novaclient.v1_1 import flavors,images
+from novaclient.v1_1 import flavors, images
 
 #All this just to convert dates
 from datetime import datetime, timedelta, date
@@ -37,20 +37,20 @@ import mimetypes
 from salesforceocc import SalesForceOCC
 
 
-
 class UserUsageStat:
     """This is an object to store a users info"""
     def __init__(self, username, tenant=None, corehrs=0, du=0):
-        self.username=username
-        self.tenant=tenant
-        self.corehrs=corehrs
-        self.du=du
+        self.username = username
+        self.tenant = tenant
+        self.corehrs = corehrs
+        self.du = du
+
 
 class NovaUserReporting:
-    def __init__(self,config_file):
+    def __init__(self, config_file):
         """INit the function"""
         #Dict of settings
-        self.settings={}
+        self.settings = {}
         self.cloud_users = {}
 
         #Stores the csv
@@ -59,23 +59,22 @@ class NovaUserReporting:
         #read in settings
         Config = ConfigParser.ConfigParser()
         Config.read(config_file)
-        sections =  Config.sections()
+        sections = Config.sections()
         for section in sections:
             options = Config.options(section)
             for option in options:
                 try:
                     self.settings[option] = Config.get(section, option)
                 except:
-                    sys.stderr.write("exception on [%s] %s!" % section,option)
-
+                    sys.stderr.write("exception on [%s] %s!" % section, option)
 
         #Get the ENV overrides
         self.override_nova_creds_with_env('OS_USERNAME')
         self.override_nova_creds_with_env('OS_PASSWORD')
         self.override_nova_creds_with_env('OS_AUTH_URL')
         self.override_nova_creds_with_env('OS_TENANT_NAME')
-    
-    def override_nova_creds_with_env(self,keyname):
+
+    def override_nova_creds_with_env(self, keyname):
        #Get the nova auth stuff if not already
         try:
             self.settings[keyname]
@@ -86,9 +85,9 @@ class NovaUserReporting:
                 sys.stderr.write("ERROR: KeyError on pulling ENV\n")
                 sys.exit(1)
 
-    def set_time_range(self,start_date=None, end_date=None):
+    def set_time_range(self, start_date=None, end_date=None):
         """ Set the time range """
-        
+
         # Set time zone and localize inputs
         try:
             self.timezone = pytz.timezone(self.settings['timezone'])
@@ -100,19 +99,18 @@ class NovaUserReporting:
         try:
             self.start_time = localize_timezone.localize(
                 (
-                    datetime.strptime(start_date,self.settings['timeformat']
+                    datetime.strptime(start_date, self.settings['timeformat']
                     )
                 )
             )
         except ValueError:
-            sys.stderr.write("ERROR: Start time not in proper format '%s'\n" % (
-                self.settings['timeformat']
-            ))
+            sys.stderr.write("ERROR: Start time not in proper format '%s'\n"
+                % (self.settings['timeformat']))
             sys.exit(1)
 
         try:
             self.end_time = localize_timezone.localize(
-                datetime.strptime(end_date,self.settings['timeformat'])
+                datetime.strptime(end_date, self.settings['timeformat'])
             )
         except ValueError:
             sys.stderr.write("ERROR: End time not in proper format '%s'\n" % (
@@ -122,17 +120,15 @@ class NovaUserReporting:
 
         self.now_time = datetime.now(tz=pytz.timezone('UTC'))
 
-
-
         #Ceiling is either NOW() or the specified date
         if self.end_time < self.now_time:
             self.cieling_time = self.end_time
         else:
             self.cieling_time = self.now_time
 
-    def db_connect(self,db):
+    def db_connect(self, db):
         try:
-            dsn = "mysql://%s:%s@%s/%s" % ( self.settings['uid'], 
+            dsn = "mysql://%s:%s@%s/%s" % (self.settings['uid'],
                 self.settings['pwd'], self.settings['server'], db)
             engine = create_engine(dsn)
             return engine.connect()
@@ -140,10 +136,10 @@ class NovaUserReporting:
         except SQLAlchemyError, e:
             sys.stderr.write("Error %d: %s" % (e.args[0], e.args[1]))
             sys.exit(1)
-        
+
     def get_corehrs(self, user_id=None, tenant_id=None):
         """Fetch the core hrs for a uuid, can be by tenant or user"""
-        corehrs_total =0;
+        corehrs_total = 0
         query_base = """SELECT
                         created_at,
                         updated_at,
@@ -208,7 +204,7 @@ class NovaUserReporting:
                         or
                         ( terminated_at is NULL and deleted_at is NULL and deleted = '0')
                     )
-                    """ % (self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']), 
+                    """ % (self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
                             self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
                             self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
                             self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat'])
@@ -219,7 +215,7 @@ class NovaUserReporting:
         elif user_id is not None and tenant_id is None:
             query = query_base + "and %s = '%s'" % ('user_id', user_id)
         elif user_id is not None and tenant_id is not None:
-            query = query_base + "and ( %s = '%s' and %s = '%s')" % ( 'project_id', tenant_id, 'user_id', user_id)
+            query = query_base + "and ( %s = '%s' and %s = '%s')" % ('project_id', tenant_id, 'user_id', user_id)
         else:
             sys.stderr.write("ERROR: How did you get here?\n")
             sys.exit(1)
@@ -232,18 +228,18 @@ class NovaUserReporting:
             sys.stderr.write("ERROR: Erroring querying the databases\n")
             sys.exit(1)
 
-        #Break out the values we need 
+        #Break out the values we need
         for row in results:
             try:
                 updated_at = row[1].replace(tzinfo=timezone('UTC'))
             except AttributeError:
                 updated_at = None
-        
+
             try:
                 deleted_at = row[2].replace(tzinfo=timezone('UTC'))
             except AttributeError:
                 deleted_at = None
-            
+
             deleted = int(row[3])
             user_id = row[6]
             project_id = row[7]
@@ -255,7 +251,6 @@ class NovaUserReporting:
             except AttributeError:
                 launched_at = None
 
-
             try:
                 scheduled_at = row[23].replace(tzinfo=timezone('UTC'))
             except AttributeError:
@@ -265,9 +260,9 @@ class NovaUserReporting:
                 terminated_at = row[25].replace(tzinfo=timezone('UTC'))
             except AttributeError:
                 terminated_at = None
-            uuid = row[34]            
+            uuid = row[34]
             task_state = row[40]
-      
+
             #Edge case for when VM started
             if launched_at is None:
                 if scheduled_at is not None:
@@ -277,8 +272,7 @@ class NovaUserReporting:
             else:
                 better_launched_at = launched_at
 
-  
-            #Find the term time for a vm 
+            #Find the term time for a vm
             if deleted == 1 and terminated_at is not None:
                 better_terminated_at = terminated_at
             elif deleted == 1 and deleted_at is not None:
@@ -313,7 +307,6 @@ class NovaUserReporting:
             else:
                 safe_launched_at = better_launched_at
 
-
             if self.start_time == self.end_time:
                 #This is for the --now function.  I just want a pt in time of core used
                 corehrs = vcpus
@@ -321,29 +314,28 @@ class NovaUserReporting:
             elif safe_launched_at >= self.start_time and safe_terminated_at <= self.cieling_time and safe_launched_at <= safe_terminated_at:
                 #After all this only sum up the ones in range
                 time_up = safe_terminated_at - safe_launched_at
-                corehrs = (time_up.total_seconds()/3600)*vcpus
+                corehrs = (time_up.total_seconds() / 3600) * vcpus
                 corehrs_total += corehrs
-            
 
         conn.close()
         return int(corehrs_total)
 
-    def get_client(self, client_type, username=None, password=None, tenant=None,url=None):
+    def get_client(self, client_type, username=None, password=None, tenant=None, url=None):
         """ Get the client object for python*-client """
         if username is None:
-            username=self.settings['OS_USERNAME']
+            username = self.settings['OS_USERNAME']
         if password is None:
-            password=self.settings['OS_PASSWORD']
+            password = self.settings['OS_PASSWORD']
         if tenant is None:
-            tenant=self.settings['OS_TENANT_NAME']
+            tenant = self.settings['OS_TENANT_NAME']
         if url is None:
-            url=self.settings['OS_AUTH_URL']
+            url = self.settings['OS_AUTH_URL']
 
         try:
             if client_type is kc_client:
                 kc = kc_client.Client(username=username,
                                 password=password,
-                                auth_url=url, 
+                                auth_url=url,
                                 tenant_name=tenant)
                 return kc
             elif client_type is nc_client:
@@ -354,28 +346,25 @@ class NovaUserReporting:
                 #  service_type=None, service_name=None):
                 nc = nc_client.Client(username=username,
                                 api_key=password,
-                                auth_url=url, 
+                                auth_url=url,
                                 project_id=tenant,
                                 region_name='RegionOne',
-                                
                     )
                 return nc
         except AuthorizationFailure:
             sys.stderr.write("Invalid Nova Creds\n")
 
-
-    def load_user_list(self,username=None, password=None, tenant=None, url=None):
+    def load_user_list(self, username=None, password=None, tenant=None, url=None):
         """Get list of tenants"""
         kc = self.get_client(client_type=kc_client)
         self.tenants = kc.tenants.list()
         self.users = kc.users.list()
 
-    def load_flavor_list(self,username=None, password=None, tenant=None, url=None):
+    def load_flavor_list(self, username=None, password=None, tenant=None, url=None):
         """Get list of the flavors"""
         nc = self.get_client(client_type=nc_client)
         flavors = nc.flavors.list()
 
-    
     def get_du(self, path=None, start_date=None, end_date=None):
         """AVG the gluster.$cloud table for a path corresponding to users homedir...hopefully"""
         g = PollGluster()
@@ -388,18 +377,15 @@ class NovaUserReporting:
             return 0
         else:
             #Round to GB and return
-            return int(du / 2**30)
-                
-        
-
+            return int(du / 2 ** 30)
 
     def load_stats(self, start_date=None, end_date=None):
         #Set the time range to pull reports for
-        self.set_time_range(start_date = start_date, end_date = end_date)
+        self.set_time_range(start_date=start_date, end_date=end_date)
 
         #Load List of Tenants and Users
         self.load_user_list()
-    
+
         ##Find a specific tenant
         #my_tenant =[x for x in nova_user_reports.tenants if x.name=='shared_tenant_test'][0]
         #print my_tenant
@@ -410,32 +396,32 @@ class NovaUserReporting:
             #Find users in a tenant
             tenant_users = tenant.list_users()
             for user in tenant_users:
-                corehrs = self.get_corehrs(user_id=user.id, tenant_id=tenant.id) 
+                corehrs = self.get_corehrs(user_id=user.id, tenant_id=tenant.id)
                 #Adjust paths for real tenants...
                 du = self.get_du(
-                    path="%s/%s"%(self.settings['gprefix'],user.name), 
+                    path="%s/%s" % (self.settings['gprefix'], user.name),
                     start_date=self.start_time, end_date=self.cieling_time)
                 if du is None:
                     du = self.get_du(
-                        path="%s/%s/%s"%(self.settings['gprefix'], tenant.name, user.name), 
+                        path="%s/%s/%s" % (self.settings['gprefix'], tenant.name, user.name),
                         start_date=self.start_time, end_date=self.cieling_time)
-                self.cloud_users[user.name]=UserUsageStat(username=user.name, tenant=tenant.name,corehrs=corehrs, du=du)
-  
+                self.cloud_users[user.name] = UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du)
+
     def gen_csv(self):
         self.csv = []
         self.csv.extend(["User, Core Hours (H), Disk Usage (GB)"])
         for cloud_user, stats in self.cloud_users.items():
-            self.csv.extend( ["%s,%s,%s" %(cloud_user, stats.corehrs, stats.du)] )
-        
+            self.csv.extend(["%s,%s,%s" % (cloud_user, stats.corehrs, stats.du)])
+
     def print_csv(self):
         #print "Tenant, User, Core Hours (H), Disk Usage (GB)"
         for line in self.csv:
-            print "%s" %(line)
+            print "%s" % (line)
 
     def get_csv(self):
         return self.csv
 
-    def email_csv(self,sendto=None, recvfrom=None, subject=None):
+    def email_csv(self, sendto=None, recvfrom=None, subject=None):
         """Send the csv to the list, sendto is a comma delimted string"""
         smtpserver = self.settings['smtphost']
 
@@ -444,37 +430,35 @@ class NovaUserReporting:
         COMMASPACE = ', '
         if sendto is None:
             for recipient in self.settings['sendto'].split(","):
-                msg.add_header('TO', recipient) 
+                msg.add_header('TO', recipient)
         else:
             for recipient in sendto.split(","):
-                msg.add_header('TO', recipient) 
-
+                msg.add_header('TO', recipient)
 
         if recvfrom is None:
-            msg['From'] =  self.settings['recvfrom']
+            msg['From'] = self.settings['recvfrom']
         else:
             msg['From'] = recvfrom
 
         if subject is None:
-            msg['Subject'] = "%s usage report for %s to %s" % ( self.settings['cloud'], self.start_time, self.end_time )
+            msg['Subject'] = "%s usage report for %s to %s" % (self.settings['cloud'], self.start_time, self.end_time)
         else:
             msg['Subject'] = subject
-    
+
         # now attach the file
-        mformat, menc = mimetypes.guess_type("%s_%s-%s.csv" %(self.settings['cloud'], self.start_time, self.end_time))
+        mformat, menc = mimetypes.guess_type("%s_%s-%s.csv" % (self.settings['cloud'], self.start_time, self.end_time))
         mmain, msub = mformat.split('/')
-        fileMsg = MIMEBase(mmain,msub)
-        attachment = "\n".join( nova_user_reports.get_csv() ) #.encode('UTF-8')
-        fileMsg.set_payload( attachment  )
+        fileMsg = MIMEBase(mmain, msub)
+        attachment = "\n".join(nova_user_reports.get_csv())  # .encode('UTF-8')
+        fileMsg.set_payload(attachment)
         encode_base64(fileMsg)
-        fileMsg.add_header('Content-Disposition',"attachment;filename=%s_%s-%s.csv" %(self.settings['cloud'], self.start_time, self.end_time))
+        fileMsg.add_header('Content-Disposition', "attachment;filename=%s_%s-%s.csv" % (self.settings['cloud'], self.start_time, self.end_time))
         msg.attach(fileMsg)
 
         #Now send it on its way
         s = smtplib.SMTP(smtpserver)
-        s.sendmail(msg['From'] ,msg.get_all('TO'), msg.as_string())
+        s.sendmail(msg['From'], msg.get_all('TO'), msg.as_string())
         s.quit()
-
 
     def push_to_sf(self):
         """ Take list of users on cloud, push as many as you can to SF """
@@ -483,7 +467,7 @@ class NovaUserReporting:
         sf.load_contacts_from_campaign(campaign=self.settings['cloud'])
         for cloud_user, stats in self.cloud_users.items():
             try:
-                case_id = sf.get_case_id(campaign=self.settings['cloud'],contact_id=sf.contacts[cloud_user]['id'])
+                case_id = sf.get_case_id(campaign=self.settings['cloud'], contact_id=sf.contacts[cloud_user]['id'])
             except KeyError:
                 case_id = None
 
@@ -491,17 +475,12 @@ class NovaUserReporting:
                 saver_result = sf.create_invoice_task(
                     campaign=self.settings['cloud'], contact_id=sf.contacts[cloud_user]['id'],
                     case_id=case_id, corehrs=stats.corehrs, du=stats.du,
-                    start_date=self.start_time , end_date=self.end_time)
+                    start_date=self.start_time, end_date=self.end_time)
                 if case_id is None:
-                    sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" %(cloud_user, saver_result))
+                    sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" % (cloud_user, saver_result))
             except KeyError:
-                sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" %(cloud_user))
+                sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" % (cloud_user))
 
-
-
-        
-                
-        
 
 def weekbegend(year, week):
     """
@@ -510,7 +489,7 @@ def weekbegend(year, week):
     Week is from Monday to Sunday night
 
     """
-    d = date(year, 1, 1)    
+    d = date(year, 1, 1)
     delta_days = d.isoweekday() - 1
     delta_weeks = week
     if year == d.isocalendar()[0]:
@@ -519,6 +498,6 @@ def weekbegend(year, week):
     delta = timedelta(days=-delta_days, weeks=delta_weeks)
     weekbeg = d + delta
     # delta2 for the end of the week
-    delta2 = timedelta(days=6-delta_days, weeks=delta_weeks)
+    delta2 = timedelta(days=6 - delta_days, weeks=delta_weeks)
     weekend = d + delta2
     return weekbeg, weekend
