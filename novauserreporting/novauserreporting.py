@@ -225,7 +225,7 @@ class NovaUserReporting:
             s = text(query)
             results = conn.execute(s)
         except SQLAlchemyError:
-            sys.stderr.write("ERROR: Erroring querying the databases\n")
+            sys.stderr.write("ERROR-NUR: Erroring querying the databases\n")
             sys.exit(1)
 
         #Break out the values we need
@@ -465,21 +465,33 @@ class NovaUserReporting:
         sf = SalesForceOCC()
         sf.login(username=self.settings['sfusername'], password=self.settings['sfpassword'], testing=True)
         sf.load_contacts_from_campaign(campaign=self.settings['cloud'])
-        for cloud_user, stats in self.cloud_users.items():
+        for cloud_username, stats in self.cloud_users.items():
+            # Assume the username on cloud and SF match
+            # If not we can try the slow way and query SF for a match
+            contact_id = None
+            case_id = None
             try:
-                case_id = sf.get_case_id(campaign=self.settings['cloud'], contact_id=sf.contacts[cloud_user]['id'])
+                contact_id = sf.contacts[cloud_username]['id']
+                case_id = sf.get_case_id(campaign=self.settings['cloud'], contact_id=contact_id)
             except KeyError:
-                case_id = None
+                try:
+                    contact_id = sf.get_contact_id_by_case_username(campaign=self.settings['cloud'], cloud_username=cloud_username)
+                    if contact_id is not None:
+                        case_id = sf.get_case_id(campaign=self.settings['cloud'], contact_id=contact_id)
+                except KeyError:
+                    case_id = None
 
-            try:
-                saver_result = sf.create_invoice_task(
-                    campaign=self.settings['cloud'], contact_id=sf.contacts[cloud_user]['id'],
-                    case_id=case_id, corehrs=stats.corehrs, du=stats.du,
-                    start_date=self.start_time, end_date=self.end_time)
-                if case_id is None:
-                    sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" % (cloud_user, saver_result))
-            except KeyError:
-                sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" % (cloud_user))
+
+            if contact_id is not None:
+                try:
+                    saver_result = sf.create_invoice_task(
+                        campaign=self.settings['cloud'], contact_id=contact_id,
+                        case_id=case_id, corehrs=stats.corehrs, du=stats.du,
+                        start_date=self.start_time, end_date=self.end_time)
+                    if case_id is None:
+                        sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" % (cloud_username, saver_result))
+                except KeyError:
+                    sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" % (cloud_username))
 
 
 def weekbegend(year, week):

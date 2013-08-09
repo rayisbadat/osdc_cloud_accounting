@@ -45,13 +45,39 @@ class SalesForceOCC:
 
     def get_case_id(self, campaign, contact_id):
         """ Given a ContactId and a Campaign find the case"""
-        cases = self.svc.query(
-            "SELECT CaseNumber, Id FROM Case where ContactId ='%s' and ResourceName__c='%s'" % (contact_id, campaign))
+        query = """SELECT CaseNumber, Id 
+                FROM Case 
+                WHERE ContactId ='%s' and ResourceName__c='%s'
+                """ % (contact_id, campaign)
+
+        cases = self.svc.query(query)
+
         for case in cases:
             try:
                 return str(case[self.objectNS.Id])
             except KeyError:
                 pass
+
+    def get_contact_id_by_case_username(self, campaign, cloud_username):
+        """Pull the username assosiated with the cloud/campaign. 
+            Used as last resort to find the edge case where system
+            and salesforce do not match"""
+
+        query = """SELECT ContactId 
+                FROM Case 
+                WHERE 
+                ResourceName__c='%s' 
+                and 
+                Server_Username_Associated_with_Invoice__c='%s'
+                """ % (campaign, cloud_username)
+
+        users = self.svc.query(query)
+        for user in users:
+            try:
+                return str(user[self.objectNS.ContactId])
+            except KeyError:
+                pass
+
 
     #def load_all_contacts(self):
     #    """ Load all the account.  This might actually fail for more then 1000 users """
@@ -67,13 +93,22 @@ class SalesForceOCC:
 
     def load_contactids_from_campaign(self, campaign_name, status="Approved User"):
         """ Load the MemberIds of the people in campaign """
-        campaigns = self.svc.query(
-            "SELECT Id, Name FROM Campaign where Name='%s'" % (campaign_name))
+
+        query_campaigns = """SELECT Id, Name 
+            FROM Campaign 
+            WHERE Name='%s'
+            """ % (campaign_name)
+
+        campaigns = self.svc.query(query_campaigns)
         campaign_id = str(campaigns[self.partnerNS.records:][0][1])
 
         #Get the list of campaign Members CampaignMember.ContactId=Contact.Id
-        contacts = self.svc.query(
-            "SELECT ContactId, Status FROM CampaignMember WHERE campaignId ='%s' and status = '%s'" % (campaign_id, status))
+       
+        query_contacts = """SELECT ContactId, Status 
+            FROM CampaignMember 
+            WHERE campaignId ='%s' and status = '%s'
+            """ % (campaign_id, status)
+        contacts = self.svc.query(query_contacts)
 
         #Get the account mappings
         for contact in contacts:
