@@ -466,23 +466,28 @@ class NovaUserReporting:
         sf.login(username=self.settings['sfusername'], password=self.settings['sfpassword'], testing=True)
         sf.load_contacts_from_campaign(campaign=self.settings['cloud'])
         for cloud_username, stats in self.cloud_users.items():
-            # Assume the username on cloud and SF match
-            # If not we can try the slow way and query SF for a match
             contact_id = None
             case_id = None
+            
+            # Assume the username on cloud and SF match
+            # If not we can try the slow way and query SF for a match
             try:
                 contact_id = sf.contacts[cloud_username]['id']
-                case_id = sf.get_case_id(campaign=self.settings['cloud'], contact_id=contact_id)
             except KeyError:
                 try:
                     contact_id = sf.get_contact_id_by_case_username(campaign=self.settings['cloud'], cloud_username=cloud_username)
-                    if contact_id is not None:
-                        case_id = sf.get_case_id(campaign=self.settings['cloud'], contact_id=contact_id)
+                except KeyError:
+                    contact_id = None
+
+            # If we found a contact_id then we can proceed
+            if contact_id is not None:
+                # We prefer having a case, but can get away witout it
+                try:
+                    case_id = sf.get_case_id(campaign=self.settings['cloud'], contact_id=contact_id)
                 except KeyError:
                     case_id = None
-
-
-            if contact_id is not None:
+                
+                # Write to SalesForce
                 try:
                     saver_result = sf.create_invoice_task(
                         campaign=self.settings['cloud'], contact_id=contact_id,
@@ -491,7 +496,11 @@ class NovaUserReporting:
                     if case_id is None:
                         sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" % (cloud_username, saver_result))
                 except KeyError:
+                    # I do not know if its even possible to get here...
                     sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" % (cloud_username))
+            else:
+                sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" % (cloud_username))
+                
 
 
 def weekbegend(year, week):
