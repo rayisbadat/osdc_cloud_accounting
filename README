@@ -1,6 +1,6 @@
 This is a collection of scripts and modules to do various
 accounting and billing stuff on the OSDC infrastructure using
-pyhton.
+python.
 
 NovaUserReporting - It queries nova db and uses PollGluster to
     generate user usage statistics and email them as a csv.
