@@ -4,7 +4,7 @@ import sys
 import getopt
 import ConfigParser
 import pprint
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 
 def weekbegend(year, week):
