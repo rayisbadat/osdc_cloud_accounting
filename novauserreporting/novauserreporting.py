@@ -449,7 +449,7 @@ class NovaUserReporting:
         mformat, menc = mimetypes.guess_type("%s_%s-%s.csv" % (self.settings['cloud'], self.start_time, self.end_time))
         mmain, msub = mformat.split('/')
         fileMsg = MIMEBase(mmain, msub)
-        attachment = "\n".join(nova_user_reports.get_csv())  # .encode('UTF-8')
+        attachment = "\n".join(self.get_csv())  # .encode('UTF-8')
         fileMsg.set_payload(attachment)
         encode_base64(fileMsg)
         fileMsg.add_header('Content-Disposition', "attachment;filename=%s_%s-%s.csv" % (self.settings['cloud'], self.start_time, self.end_time))
