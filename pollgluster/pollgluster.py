@@ -100,7 +100,7 @@ class PollGluster:
 
         self.set_time_range(start_date=start_date, end_date=end_date)
 
-        my_query = "SELECT AVG(value) FROM %s where ( date >= '%s' and date <= '%s' ) and path = '%s'" % (
+        my_query = "SELECT AVG(value) FROM %s where ( date >= '%s' and date <= '%s' ) and path like '%s'" % (
             self.settings['cloud'],
             self.start_time.strftime(self.settings['timeformat']),
             self.cieling_time.strftime(self.settings['timeformat']),

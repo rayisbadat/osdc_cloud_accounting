@@ -374,7 +374,8 @@ class NovaUserReporting:
                     end_date=end_date.strftime(self.settings['timeformat']),
                     path=path)
         if du is None:
-            return 0
+            #return 0
+            return None
         else:
             #Round to GB and return
             return int(du / 2 ** 30)
@@ -403,7 +404,7 @@ class NovaUserReporting:
                     start_date=self.start_time, end_date=self.cieling_time)
                 if du is None:
                     du = self.get_du(
-                        path="%s/%s/%s" % (self.settings['gprefix'], tenant.name, user.name),
+                        path="%s/%s/%s" % (self.settings['gprefix'], '%', user.name),
                         start_date=self.start_time, end_date=self.cieling_time)
                 self.cloud_users[user.name] = UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du)
 
