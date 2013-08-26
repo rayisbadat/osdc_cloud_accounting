@@ -132,13 +132,17 @@ class SalesForceOCC:
 
         #Loop through and dict the results for latter processing
         for contact in contacts:
-            self.contacts[str(contact[userNS])] = {
-                'username': str(contact[userNS]),
-                'email': str(contact[self.objectNS.Email]),
-                'id': str(contact[1]),
-                'corehrs': None,
-                'du': None,
-            }
+            try:
+                self.contacts[str(contact[userNS])] = {
+                    'username': str(contact[userNS]),
+                    'email': str(contact[self.objectNS.Email]),
+                    'id': str(contact[1]),
+                    'corehrs': None,
+                    'du': None,
+                }
+            except KeyError as e:
+                sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
+            
 
     def login(self, username="", password="", url="https://login.salesforce.com/services/Soap/u/28.0"):
         """Login to sales force to use their SOQL nonsense"""
