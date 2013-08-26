@@ -70,6 +70,7 @@ class RepQuota:
 
         repquotas = []
         for server in self.servers:
+            print "Server %s" %(server)
             try:
                 repquotas.append(
                     self.get_repquota_from_server(server=server, port=port))
@@ -83,9 +84,11 @@ class RepQuota:
                 if results:
                     print "%s == %s" %(results.group(1), results.group(2))
                     try:
-                        self.dus[results.group(1)] += results.group(2)
+                        self.dus[results.group(1)] += int(results.group(2))
+                        print "MOO"
                     except KeyError:
-                        self.dus[results.group(1)] = results.group(2)
+                        self.dus[results.group(1)] = int(results.group(2))
+                        print "OINK"
                         
 
 
@@ -187,6 +190,7 @@ class RepQuota:
 
 if __name__ == "__main__":
     g = RepQuota()
+    g.add_server(server="127.0.0.1")
     g.add_server(server="127.0.0.1")
     g.load_quotas()
     g.print_du()
