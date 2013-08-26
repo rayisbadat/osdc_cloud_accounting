@@ -82,7 +82,11 @@ class RepQuota:
                 results = re.search(self.repquota_regex,line)
                 if results:
                     print "%s == %s" %(results.group(1), results.group(2))
-                    self.dus[results.group(1)] = results.group(2)
+                    try:
+                        self.dus[results.group(1)] += results.group(2)
+                    except KeyError:
+                        self.dus[results.group(1)] = results.group(2)
+                        
 
 
     def print_du(self):
