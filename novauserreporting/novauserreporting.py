@@ -464,7 +464,7 @@ class NovaUserReporting:
     def push_to_sf(self):
         """ Take list of users on cloud, push as many as you can to SF """
         sf = SalesForceOCC()
-        sf.login(username=self.settings['sfusername'], password=self.settings['sfpassword'], testing=True)
+        sf.login(username=self.settings['sfusername'], password=self.settings['sfpassword'], url=self.settings['sfurl'])
         sf.load_contacts_from_campaign(campaign=self.settings['cloud'])
         for cloud_username, stats in self.cloud_users.items():
             contact_id = None

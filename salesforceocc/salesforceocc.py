@@ -140,12 +140,11 @@ class SalesForceOCC:
                 'du': None,
             }
 
-    def login(self, username="", password="", testing=False):
+    def login(self, username="", password="", url="https://login.salesforce.com/services/Soap/u/28.0"):
         """Login to sales force to use their SOQL nonsense"""
         #I dont want to use .net and their shitty code explorer
         #Pull the table schema with Force.com Explorer(Beta)
-        if testing == True:
-            self.svc.serverUrl = "https://test.salesforce.com/services/Soap/u/20.0"
+        self.svc.serverUrl = "https://test.salesforce.com/services/Soap/u/20.0"
         self.svc.login(username, password)
 
     def return_userNS(self, campaign):
