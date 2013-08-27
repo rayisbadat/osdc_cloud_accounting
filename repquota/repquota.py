@@ -4,9 +4,9 @@ import socket
 import re
 
 #Db stuff
-from sqlalchemy import create_engine, insert, text
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import Table, Column, Text, Float, MetaData, DateTime
+#from sqlalchemy import create_engine, insert, text
+#from sqlalchemy.exc import SQLAlchemyError
+#from sqlalchemy import Table, Column, Text, Float, MetaData, DateTime
 
 #All this just to convert dates
 from datetime import datetime, timedelta
@@ -20,6 +20,8 @@ class RepQuota:
     def __init__(self, config_file=".settings"):
         """Polls gluster for quotas and save into dict"""
         self.settings = {}
+        self.repquota_regex='(\S+)\s+--\s+(\d+)'
+        self.servers = []
 
         #read in settings
         Config = ConfigParser.ConfigParser()
@@ -31,16 +33,14 @@ class RepQuota:
                 try:
                     self.settings[option] = Config.get(section, option)
                 except:
-                    print "exception on [%s] %s!" % (section, option)
+                    sys.stderr.write("ERROR: exception on [%s] %s!" % (section, option))
 
         self.now_time = datetime.now(tz=pytz.timezone('UTC'))
         self.dus = {}
         ###
-        self.servers = []
-        self.buffer_size = 102400
-        self.settings['user_repquota_port']=8989
-        self.settings['group_repquota_port']=8988
-        self.repquota_regex='(\S+)\s+--\s+(\d+)'
+        if self.settings['repquota_servers']:
+            for server in self.settings['repquota_servers'].split(','):
+                self.add_server(server=server)
 
 
     def add_server(self, server=None):
@@ -53,42 +53,43 @@ class RepQuota:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((server, port))
         s.send("")
-        data = s.recv(self.buffer_size)
+        all_data = s.recv(1024)
+        while 1:
+            data = s.recv(1024)
+            if not data: 
+                break
+            else:
+                all_data += data
         s.close()
-        return data
+        return all_data
 
 
     def load_quotas(self, quota_type="user"):
         """ Loop through server list and get repquotas """
         if quota_type == "user":
-            port = self.settings['user_repquota_port']
+            port = int(self.settings['user_repquota_port'])
         elif quota_type == "group":
-            port = self.settings['group_repquota_port']
+            port = int(self.settings['group_repquota_port'])
         else:
             sys.stderr.write("ERROR: Valid quota types are 'user' or 'group'\n")
             raise Exception
 
         repquotas = []
         for server in self.servers:
-            print "Server %s" %(server)
             try:
                 repquotas.append(
                     self.get_repquota_from_server(server=server, port=port))
-            except:
-                sys.stderr.write("ERROR: server %s errored getting quota\n" %(server))
+            except Exception as e:
+                sys.stderr.write("ERROR: server %s:%s errored getting quota\n%s\n" %(server, port, e))
 
         for repquota in repquotas:
             for line in repquota.split("\n"):
-                print line
                 results = re.search(self.repquota_regex,line)
                 if results:
-                    print "%s == %s" %(results.group(1), results.group(2))
                     try:
                         self.dus[results.group(1)] += int(results.group(2))
-                        print "MOO"
                     except KeyError:
                         self.dus[results.group(1)] = int(results.group(2))
-                        print "OINK"
                         
 
 
@@ -190,7 +191,7 @@ class RepQuota:
 
 if __name__ == "__main__":
     g = RepQuota()
-    g.add_server(server="127.0.0.1")
-    g.add_server(server="127.0.0.1")
+    #g.add_server(server="127.0.0.1")
+    #g.add_server(server="127.0.0.1")
     g.load_quotas()
     g.print_du()
