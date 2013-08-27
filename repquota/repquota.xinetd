@@ -1,0 +1,11 @@
+service repquota
+{
+    disable = no
+    socket_type = stream
+    protocol    = tcp
+    wait        = no
+    user        = root
+    server      = /usr/sbin/repquota /exports/gluster
+    #We need to add 'repquota 8989/tcp' to /etc/services
+    port        = 8989
+}
