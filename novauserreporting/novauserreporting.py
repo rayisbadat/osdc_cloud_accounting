@@ -23,7 +23,7 @@ from pytz import timezone
 import pytz
 
 #The gluster poller
-from pollgluster import PollGluster
+from repquota import RepQuota
 
 # Here are the email package modules we'll need
 import smtplib
@@ -367,7 +367,7 @@ class NovaUserReporting:
 
     def get_du(self, path=None, start_date=None, end_date=None):
         """AVG the gluster.$cloud table for a path corresponding to users homedir...hopefully"""
-        g = PollGluster()
+        g = RepQuota()
         du = g.get_average_du(
                 start_date=start_date.strftime(
                     self.settings['timeformat']),
@@ -400,12 +400,8 @@ class NovaUserReporting:
                 corehrs = self.get_corehrs(user_id=user.id, tenant_id=tenant.id)
                 #Adjust paths for real tenants...
                 du = self.get_du(
-                    path="%s/%s" % (self.settings['gprefix'], user.name),
+                    path="%s" % (user.name),
                     start_date=self.start_time, end_date=self.cieling_time)
-                if du is None:
-                    du = self.get_du(
-                        path="%s/%s/%s" % (self.settings['gprefix'], '%', user.name),
-                        start_date=self.start_time, end_date=self.cieling_time)
                 self.cloud_users[user.name] = UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du)
 
     def gen_csv(self):
