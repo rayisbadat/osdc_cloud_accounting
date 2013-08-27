@@ -5,7 +5,8 @@ service repquota
     protocol    = tcp
     wait        = no
     user        = root
-    server      = /usr/sbin/repquota /exports/gluster
+    server      = /usr/local/bin/repquota_gluster.sh
     #We need to add 'repquota 8989/tcp' to /etc/services
+    #Firewall off this port to reporting server
     port        = 8989
 }
