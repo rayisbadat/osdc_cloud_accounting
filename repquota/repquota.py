@@ -4,17 +4,14 @@ import socket
 import re
 
 #Db stuff
-#from sqlalchemy import create_engine, insert, text
-#from sqlalchemy.exc import SQLAlchemyError
-#from sqlalchemy import Table, Column, Text, Float, MetaData, DateTime
+from sqlalchemy import create_engine, insert, text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import Table, Column, Text, Float, MetaData, DateTime
 
 #All this just to convert dates
 from datetime import datetime, timedelta
 from pytz import timezone
 import pytz
-
-#from unitconversion import UnitConversion
-
 
 class RepQuota:
     def __init__(self, config_file=".settings"):
@@ -22,6 +19,7 @@ class RepQuota:
         self.settings = {}
         self.repquota_regex='(\S+)\s+--\s+(\d+)'
         self.servers = []
+        self.dus = {}
 
         #read in settings
         Config = ConfigParser.ConfigParser()
@@ -36,8 +34,14 @@ class RepQuota:
                     sys.stderr.write("ERROR: exception on [%s] %s!" % (section, option))
 
         self.now_time = datetime.now(tz=pytz.timezone('UTC'))
-        self.dus = {}
-        ###
+
+        self.metadata = MetaData()
+        self.du_table = Table(self.settings['cloud'], self.metadata,
+                Column('date', DateTime),
+                Column('path', Text),
+                Column('value', Float),
+        )
+
         if self.settings['repquota_servers']:
             for server in self.settings['repquota_servers'].split(','):
                 self.add_server(server=server)
@@ -113,11 +117,10 @@ class RepQuota:
 
         conn = self.db_connect(self.settings['quotadb'])
         insert = []
-        unitconverter = UnitConversion()
         for path, value in self.dus.items():
             insert.append({'date': self.now_time,
                 'path': path,
-                'value': unitconverter.human2bytes(value)
+                'value': int(value)
             })
         conn.execute(self.du_table.insert(), insert)
 
@@ -191,7 +194,5 @@ class RepQuota:
 
 if __name__ == "__main__":
     g = RepQuota()
-    #g.add_server(server="127.0.0.1")
-    #g.add_server(server="127.0.0.1")
     g.load_quotas()
     g.print_du()
