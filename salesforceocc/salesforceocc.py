@@ -148,7 +148,7 @@ class SalesForceOCC:
         """Login to sales force to use their SOQL nonsense"""
         #I dont want to use .net and their shitty code explorer
         #Pull the table schema with Force.com Explorer(Beta)
-        self.svc.serverUrl = "https://test.salesforce.com/services/Soap/u/20.0"
+        self.svc.serverUrl = url
         self.svc.login(username, password)
 
     def return_userNS(self, campaign):
