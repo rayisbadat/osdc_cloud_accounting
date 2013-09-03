@@ -487,18 +487,21 @@ class NovaUserReporting:
                     case_id = sf.get_case_id(campaign=self.settings['cloud'], contact_id=contact_id)
                 except KeyError:
                     case_id = None
-                
-                # Write to SalesForce
-                try:
-                    saver_result = sf.create_invoice_task(
-                        campaign=self.settings['cloud'], contact_id=contact_id,
-                        case_id=case_id, corehrs=stats.corehrs, du=stats.du,
-                        start_date=self.start_time, end_date=self.end_time)
-                    if case_id is None:
-                        sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" % (cloud_username, saver_result))
-                except KeyError:
-                    # I do not know if its even possible to get here...
-                    sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" % (cloud_username))
+            
+                if ( stats.corehrs is None or stats.corehrs == 0 ) and ( stats.du is None or stats.du == 0):
+                    sys.stderr.write("INFO: User %s had no billable usage\n" %(cloud_username) )
+                else:
+                    # Write to SalesForce
+                    try:
+                        saver_result = sf.create_invoice_task(
+                            campaign=self.settings['cloud'], contact_id=contact_id,
+                            case_id=case_id, corehrs=stats.corehrs, du=stats.du,
+                            start_date=self.start_time, end_date=self.end_time)
+                        if case_id is None:
+                            sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" % (cloud_username, saver_result))
+                    except KeyError:
+                        # I do not know if its even possible to get here...
+                        sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" % (cloud_username))
             else:
                 sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" % (cloud_username))
                 
