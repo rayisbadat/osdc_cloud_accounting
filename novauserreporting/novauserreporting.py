@@ -378,7 +378,7 @@ class NovaUserReporting:
             return None
         else:
             #Round to GB and return
-            return int(du / 2 ** 30)
+            return int(du / 2 ** 20)
 
     def load_stats(self, start_date=None, end_date=None):
         #Set the time range to pull reports for
