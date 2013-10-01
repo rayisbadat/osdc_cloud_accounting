@@ -203,8 +203,11 @@ class NovaUserReporting:
                         ( deleted_at >= '%s' and deleted_at <= '%s' )
                         or
                         ( terminated_at is NULL and deleted_at is NULL and deleted = '0')
+			or
+			( launched_at <= '%s' and terminated_at >= '%s' )
                     )
                     """ % (self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
+                            self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
                             self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
                             self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
                             self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat'])
@@ -227,6 +230,7 @@ class NovaUserReporting:
         except SQLAlchemyError:
             sys.stderr.write("ERROR-NUR: Erroring querying the databases\n")
             sys.exit(1)
+
 
         #Break out the values we need
         for row in results:
