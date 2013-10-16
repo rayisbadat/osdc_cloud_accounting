@@ -128,7 +128,7 @@ class NovaUserReporting:
 
     def db_connect(self, db):
         try:
-            dsn = "mysql://%s:%s@%s/%s" % (self.settings['uid'],
+            dsn = "mysql://%s:%s@%s/%s" % (self.settings['db_user'],
                 self.settings['pwd'], self.settings['server'], db)
             engine = create_engine(dsn)
             return engine.connect()
