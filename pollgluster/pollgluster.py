@@ -24,7 +24,7 @@ class PollGluster:
         #read in settings
         Config = ConfigParser.ConfigParser()
         Config.read(config_file)
-        sections = Config.sections()
+        sections = ['general','pollgluster']
         for section in sections:
             options = Config.options(section)
             for option in options:

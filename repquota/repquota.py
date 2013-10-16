@@ -24,7 +24,7 @@ class RepQuota:
         #read in settings
         Config = ConfigParser.ConfigParser()
         Config.read(config_file)
-        sections = Config.sections()
+        sections = ['general','repquota']
         for section in sections:
             options = Config.options(section)
             for option in options:
