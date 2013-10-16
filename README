@@ -9,7 +9,11 @@ NovaUserReporting - It queries nova db and uses PollGluster to
 
 PollGluster - It is a poller that basically parses
     gluster volume USER-HOME into a table, then queries it
-    when needed
+    when needed.  Superseceded by repquota.py
+
+RepQuota - This polls an xnetid script that reports the 
+    filesystem quotas.  Allows us to track people outside
+    of gluster limited path based quota reporting.
 
 UnitConversion - Found it on StackExchange, its useful for
     converting disk units.
