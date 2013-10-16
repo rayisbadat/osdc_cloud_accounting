@@ -36,7 +36,7 @@ class RepQuota:
         self.now_time = datetime.now(tz=pytz.timezone('UTC'))
 
         self.metadata = MetaData()
-        self.du_table = Table(self.settings['cloud'], self.metadata,
+        self.du_table = Table(self.settings['db_table'], self.metadata,
                 Column('date', DateTime),
                 Column('path', Text),
                 Column('value', Float),
@@ -110,12 +110,12 @@ class RepQuota:
             return engine.connect()
 
         except SQLAlchemyError, e:
-            print "Error %d: %s" % (e.args[0], e.args[1])
+            print e
 
     def write_to_db(self):
         """Push it out to a file"""
 
-        conn = self.db_connect(self.settings['quotadb'])
+        conn = self.db_connect(self.settings['db_database'])
         insert = []
         for path, value in self.dus.items():
             insert.append({'date': self.now_time,

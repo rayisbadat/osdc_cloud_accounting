@@ -38,7 +38,7 @@ class PollGluster:
         self.now_time = datetime.now(tz=pytz.timezone('UTC'))
         self.dus = {}
         self.metadata = MetaData()
-        self.du_table = Table(self.settings['cloud'], self.metadata,
+        self.du_table = Table(self.settings['db_table'], self.metadata,
                 Column('date', DateTime),
                 Column('path', Text),
                 Column('value', Float),
@@ -81,7 +81,7 @@ class PollGluster:
     def write_to_db(self):
         """Push it out to a file"""
 
-        conn = self.db_connect(self.settings['glusterdb'])
+        conn = self.db_connect(self.settings['db_name'])
         insert = []
         unitconverter = UnitConversion()
         for path, value in self.dus.items():
