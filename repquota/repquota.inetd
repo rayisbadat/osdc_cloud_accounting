@@ -1,0 +1,2 @@
+#Be sure to firewall off port 8989 to only the reporting server
+8989    stream  tcp     nowait  root /usr/local/bin/repquota_gluster.sh
