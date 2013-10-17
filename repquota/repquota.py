@@ -134,13 +134,13 @@ class RepQuota:
         self.set_time_range(start_date=start_date, end_date=end_date)
 
         my_query = "SELECT AVG(value) FROM %s where ( date >= '%s' and date <= '%s' ) and path like '%s'" % (
-            self.settings['cloud'],
+            self.settings['db_table'],
             self.start_time.strftime(self.settings['timeformat']),
             self.cieling_time.strftime(self.settings['timeformat']),
             path)
 
         try:
-            conn = self.db_connect(self.settings['glusterdb'])
+            conn = self.db_connect(self.settings['db_database'])
             s = text(my_query)
             result = conn.execute(s).fetchall()
             return result[0][0]
