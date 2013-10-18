@@ -12,6 +12,7 @@ from sqlalchemy import Table, Column, Text, Float, MetaData, DateTime
 from datetime import datetime, timedelta
 from pytz import timezone
 import pytz
+import numpy
 
 class RepQuota:
     def __init__(self, config_file=".settings"):
@@ -148,6 +149,39 @@ class RepQuota:
         except SQLAlchemyError:
             sys.stderr.write("Erroring querying the databases\n")
             sys.exit(1)
+
+    def get_95thp_du(self, start_date=None, end_date=None, path=None):
+        """Get the 95th percentile of the du"""
+        if start_date is  None or end_date is None:
+            sys.stderr.write(
+                "ERROR: Start and End Dates no specified in get_95thp_du")
+            sys.exit(1)
+
+        self.set_time_range(start_date=start_date, end_date=end_date)
+
+        my_query = "SELECT value FROM %s where ( date >= '%s' and date <= '%s' ) and path like '%s'" % (
+            self.settings['db_table'],
+            self.start_time.strftime(self.settings['timeformat']),
+            self.cieling_time.strftime(self.settings['timeformat']),
+            path)
+
+        try:
+            dus=[]
+            conn = self.db_connect(self.settings['db_database'])
+            s = text(my_query)
+            results = conn.execute(s).fetchall()
+            if results:
+                for x in results:
+                    dus.append(x)
+                result = numpy.percentile(a=dus,q=95)
+                return result
+            else:
+                return 0
+
+        except SQLAlchemyError:
+            sys.stderr.write("Erroring querying the databases\n")
+            sys.exit(1)
+    
 
     def set_time_range(self, start_date=None, end_date=None):
         """ Set the time range """

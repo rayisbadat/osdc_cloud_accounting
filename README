@@ -25,3 +25,7 @@ SalesforceOCC -  Module built around Beatbox to allow us
 
 cloud_report.py - Main command to generate usage/billing reports
 
+
+Dependencies:
+   python-numpy
+

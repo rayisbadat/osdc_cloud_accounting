@@ -372,11 +372,26 @@ class NovaUserReporting:
     def get_du(self, path=None, start_date=None, end_date=None):
         """AVG the gluster.$cloud table for a path corresponding to users homedir...hopefully"""
         g = RepQuota()
-        du = g.get_average_du(
+        try:
+            if self.settings['du_percentile'] == '95':
+                du = g.get_95thp_du(
+                        start_date=start_date.strftime(
+                            self.settings['timeformat']),
+                            end_date=end_date.strftime(self.settings['timeformat']),
+                            path=path)
+            else:
+                du = g.get_average_du(
+                        start_date=start_date.strftime(
+                            self.settings['timeformat']),
+                            end_date=end_date.strftime(self.settings['timeformat']),
+                            path=path)
+        except KeyError:
+            du = g.get_average_du(
                 start_date=start_date.strftime(
                     self.settings['timeformat']),
                     end_date=end_date.strftime(self.settings['timeformat']),
                     path=path)
+
         if du is None:
             #return 0
             return None
