@@ -373,13 +373,15 @@ class NovaUserReporting:
         """AVG the gluster.$cloud table for a path corresponding to users homedir...hopefully"""
         g = RepQuota()
         try:
-            if self.settings['du_percentile'] == '95':
+            if self.settings['du_percentile'].isdigit():
+		print "ISGITI"
                 du = g.get_95thp_du(
                         start_date=start_date.strftime(
                             self.settings['timeformat']),
                             end_date=end_date.strftime(self.settings['timeformat']),
                             path=path)
             else:
+		print "B"
                 du = g.get_average_du(
                         start_date=start_date.strftime(
                             self.settings['timeformat']),
