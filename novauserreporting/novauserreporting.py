@@ -234,6 +234,12 @@ class NovaUserReporting:
 
         #Break out the values we need
         for row in results:
+
+            try:
+                created_at = row[1].replace(tzinfo=timezone('UTC'))
+            except AttributeError:
+                created_at = None
+
             try:
                 updated_at = row[1].replace(tzinfo=timezone('UTC'))
             except AttributeError:
