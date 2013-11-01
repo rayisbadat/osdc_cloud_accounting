@@ -59,7 +59,7 @@ class NovaUserReporting:
         #read in settings
         Config = ConfigParser.ConfigParser()
         Config.read(config_file)
-        sections = ['general','novauserreporting']
+        sections = ['general','novauserreporting','salesforceocc']
         for section in sections:
             options = Config.options(section)
             for option in options:
