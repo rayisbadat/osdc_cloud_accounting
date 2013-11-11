@@ -6,7 +6,8 @@ import sys
 class SalesForceOCC:
     def __init__(self):
         """INit the function"""
-        self.svc = beatbox.Client()
+        #self.svc = beatbox.Client()
+        self.svc = beatbox.PythonClient()
         self.partnerNS = beatbox._tPartnerNS
         self.objectNS = beatbox._tSObjectNS
         self.soapNS = beatbox._tSoapNS
@@ -93,6 +94,11 @@ class SalesForceOCC:
 
     def load_contactids_from_campaign(self, campaign_name, status="Approved User"):
         """ Load the MemberIds of the people in campaign """
+        self.contact_ids = get_contactids_from_campaign(self, campaign_name=campaign_name, status=status)
+        
+    def get_contactids_from_campaign(self, campaign_name, status="Approved User"):
+        """ Get the MemberIds of the people in campaign """
+        contact_ids = []
 
         query_campaigns = """SELECT Id, Name 
             FROM Campaign 
@@ -100,7 +106,7 @@ class SalesForceOCC:
             """ % (campaign_name)
 
         campaigns = self.svc.query(query_campaigns)
-        campaign_id = str(campaigns[self.partnerNS.records:][0][1])
+        campaign_id = str(campaigns[0]['Id'])
 
         #Get the list of campaign Members CampaignMember.ContactId=Contact.Id
        
@@ -113,9 +119,12 @@ class SalesForceOCC:
         #Get the account mappings
         for contact in contacts:
             try:
-                self.contact_ids.append(str(contact[self.objectNS.ContactId]))
+                contact_ids.append(str(contact[self.objectNS.ContactId]))
+                print contact_ids
             except KeyError:
                 pass
+
+        return contact_ids
 
     def load_contacts_from_campaign(self, campaign, user_field='OSDC_Username__c'):
         """ Create a listing of what we need for each user in a campaign """
