@@ -114,23 +114,29 @@ class SalesForceOCC:
 
         return contact_ids
 
-    def load_contacts_from_campaign(self, campaign, user_field='OSDC_Username__c'):
-        """ Create a listing of what we need for each user in a campaign """
 
-        #Load the ContactIds for the people in this campaign. We map cloud to campaign
-        self.load_contactids_from_campaign(campaign)
+    def load_contacts_from_campaign(self, campaign_name):
+        """ Create a listing of what we need for each user in a campaign """
+        self.contacts = self.get_contacts_from_campaign(campaign_name=campaign_name,user_field=user_field)  
+
+
+    def get_contacts_from_campaign(self, campaign_name):
+        """ Create a listing of what we need for each user in a campaign """
+        #Get the ContactIds for the people in this campaign. We map cloud to campaign
+        contact_ids = self.get_contactids_from_campaign(campaign_name)
 
         #We need to know what the correct objectNS for the correct campaign is
-        userNS = self.return_userNS(campaign)
+        userNS = self.return_userNS(campaign_name)
 
         #Fields to pull
         fields = 'Bionimbus_WEB_Username__c, Email, Name, OCC_Y_Server_Username__c, OSDC_Username__c, PDC_eRA_Commons__c '
-        contacts = self.svc.retrieve(fields, "Contact", self.contact_ids)
+        contacts = self.svc.retrieve(fields, "Contact", contact_ids)
+        contacts_dict = {}
 
         #Loop through and dict the results for latter processing
         for contact in contacts:
             try:
-                self.contacts[str(contact[userNS])] = {
+                contacts_dict[str(contact[userNS])] = {
                     'username': str(contact[userNS]),
                     'email': str(contact[self.objectNS.Email]),
                     'id': str(contact[1]),
@@ -139,6 +145,8 @@ class SalesForceOCC:
                 }
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
+
+        return contacts_dict
             
 
     def login(self, username="", password="", url="https://login.salesforce.com/services/Soap/u/28.0"):
@@ -148,13 +156,13 @@ class SalesForceOCC:
         self.svc.serverUrl = url
         self.svc.login(username, password)
 
-    def return_userNS(self, campaign):
+    def return_userNS(self, campaign_name):
         """ We need to use these xxxNS as indexes into results, this returns the correct one based on cloud name """
-        if campaign == 'OCC Y User/Applicant Tracking':
+        if campaign_name == 'OCC Y User/Applicant Tracking':
             return self.objectNS.OCC_Y_Server_Username__c
-        elif campaign == 'PDC':
+        elif campaign_name == 'PDC':
             return self.objectNS.PDC_eRA_Commons__c
-        elif campaign == 'Bionimbus (WEB ONLY) User/Applicant Tracking':
+        elif campaign_name == 'Bionimbus (WEB ONLY) User/Applicant Tracking':
             return self.objectNS.Bionimbus_WEB_Username__c
         else:
             return self.objectNS.OSDC_Username__c
