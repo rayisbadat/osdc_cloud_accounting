@@ -81,11 +81,11 @@ class SalesForceOCC:
 
 
 
-    def load_contactids_from_campaign(self, campaign_name, status="Approved User"):
+    def load_contactids_from_campaign(self, campaign_name, statuses=["Approved User"]):
         """ Load the MemberIds of the people in campaign """
-        self.contact_ids = self.get_contactids_from_campaign(campaign_name=campaign_name, status=status)
+        self.contact_ids = self.get_contactids_from_campaign(campaign_name=campaign_name, statuses=statuses)
         
-    def get_contactids_from_campaign(self, campaign_name, status="Approved User"):
+    def get_contactids_from_campaign(self, campaign_name, statuses=["Approved User"]):
         """ Get the MemberIds of the people in campaign """
         contact_ids = []
 
@@ -98,32 +98,33 @@ class SalesForceOCC:
         campaign_id = str(campaigns[self.partnerNS.records:][0][self.objectNS.Id])
 
         #Get the list of campaign Members CampaignMember.ContactId=Contact.Id
-       
-        query_contacts = """SELECT ContactId, Status 
-            FROM CampaignMember 
-            WHERE campaignId ='%s' and status = '%s'
-            """ % (campaign_id, status)
-        contacts = self.svc.query(query_contacts)
-
-        #Get the account mappings
-        for contact in contacts:
-            try:
-                contact_ids.append(str(contact[self.objectNS.ContactId]))
-            except KeyError:
-                pass
-
+      
+        for status in statuses:
+            query_contacts = """SELECT ContactId, Status 
+                FROM CampaignMember 
+                WHERE campaignId ='%s' and status = '%s'
+                """ % (campaign_id, status)
+            contacts = self.svc.query(query_contacts)
+    
+            #Get the account mappings
+            for contact in contacts:
+                try:
+                    contact_ids.append(str(contact[self.objectNS.ContactId]))
+                except KeyError:
+                    pass
+    
         return contact_ids
 
 
-    def load_contacts_from_campaign(self, campaign_name):
+    def load_contacts_from_campaign(self, campaign_name, statuses=["Approved User"]):
         """ Create a listing of what we need for each user in a campaign """
-        self.contacts = self.get_contacts_from_campaign(campaign_name=campaign_name,user_field=user_field)  
+        self.contacts = self.get_contacts_from_campaign(campaign_name=campaign_name, statuses=statuses)
 
 
-    def get_contacts_from_campaign(self, campaign_name):
+    def get_contacts_from_campaign(self, campaign_name, statuses=["Approved User"]):
         """ Create a listing of what we need for each user in a campaign """
         #Get the ContactIds for the people in this campaign. We map cloud to campaign
-        contact_ids = self.get_contactids_from_campaign(campaign_name)
+        contact_ids = self.get_contactids_from_campaign(campaign_name, statuses=statuses)
 
         #We need to know what the correct objectNS for the correct campaign is
         userNS = self.return_userNS(campaign_name)
@@ -203,7 +204,7 @@ class SalesForceOCC:
 
         for username, contact in contacts.items():
             try:
-                print '"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}"'.format( \
+                print '"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}"'.format( \
                     'Approved User',
                     contact['FirstName'],
                     contact['LastName'],
@@ -212,7 +213,6 @@ class SalesForceOCC:
                     contact['PI'],
                     contact['Project'],
                     contact['username'],
-                    "",
                     contact['Email'],
                     contact['Phone'],
                     campaign_name,

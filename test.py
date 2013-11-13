@@ -22,6 +22,6 @@ if __name__ == "__main__":
    
 
     sfocc.login(username=settings['sfusername'], password=settings['sfpassword'])
-    sfocc.get_contactids_from_campaign(campaign_name=settings['cloud'], status="Approved User")
-    contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['cloud'])
+    #contact_ids = sfocc.get_contactids_from_campaign(campaign_name=settings['cloud'], statuses=["Approved User", "Application Pending"])
+    contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['cloud'],  statuses=["Approved User", "Application Pending"])
     sfocc.print_approved_users_csv(campaign_name=settings['cloud'], contacts=contacts)
