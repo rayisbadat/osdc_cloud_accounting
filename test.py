@@ -22,5 +22,6 @@ if __name__ == "__main__":
    
 
     sfocc.login(username=settings['sfusername'], password=settings['sfpassword'])
-    pprint.pprint(sfocc.get_contactids_from_campaign(campaign_name=settings['cloud'], status="Approved User"))
-    pprint.pprint( sfocc.get_contacts_from_campaign(campaign_name=settings['cloud']))
+    sfocc.get_contactids_from_campaign(campaign_name=settings['cloud'], status="Approved User")
+    contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['cloud'])
+    sfocc.print_approved_users_csv(campaign_name=settings['cloud'], contacts=contacts)

@@ -128,8 +128,13 @@ class SalesForceOCC:
         #We need to know what the correct objectNS for the correct campaign is
         userNS = self.return_userNS(campaign_name)
 
+        #Get the accounts
+        accounts = self.get_accounts()
+
         #Fields to pull
-        fields = 'Bionimbus_WEB_Username__c, Email, Name, OCC_Y_Server_Username__c, OSDC_Username__c, PDC_eRA_Commons__c '
+        fields = "Id, FirstName, AccountId, \
+            LastName,Department,Principal_Investigator__c,Project_Name_Description__c, \
+            PDC_eRA_Commons__c, OSDC_Username__c, Bionimbus_WEB_Username__c, Email, Name, OCC_Y_Server_Username__c, Phone"
         contacts = self.svc.retrieve(fields, "Contact", contact_ids)
         contacts_dict = {}
 
@@ -137,9 +142,17 @@ class SalesForceOCC:
         for contact in contacts:
             try:
                 contacts_dict[str(contact[userNS])] = {
+                    'FirstName': str(contact[self.objectNS.FirstName]),
+                    'Account': str(accounts[str(contact[self.objectNS.AccountId])]),
+                    'LastName': str(contact[self.objectNS.LastName]),
+                    'Department': str(contact[self.objectNS.Department]),
+                    'PI': str(contact[self.objectNS.Principal_Investigator__c]),
+                    'Project': str(contact[self.objectNS.Project_Name_Description__c]),
                     'username': str(contact[userNS]),
-                    'email': str(contact[self.objectNS.Email]),
-                    'id': str(contact[1]),
+                    'Name': str(contact[self.objectNS.Name]),
+                    'Email': str(contact[self.objectNS.Email]),
+                    'Phone': str(contact[self.objectNS.Phone]),
+                    'id':  str(contact[self.objectNS.Id]),
                     'corehrs': None,
                     'du': None,
                 }
@@ -166,3 +179,43 @@ class SalesForceOCC:
             return self.objectNS.Bionimbus_WEB_Username__c
         else:
             return self.objectNS.OSDC_Username__c
+
+    def get_accounts(self):
+        #Get the account mappings
+        accounts_query = self.svc.query( "SELECT Id, Name FROM Account" )
+        accounts_dict={}
+        for value in accounts_query:
+            try:
+                value_id = str(value[self.objectNS.Id])
+                value_name = str(value[self.objectNS.Name])
+                accounts_dict[value_id]=value_name
+            except KeyError:
+                pass
+        return accounts_dict
+
+    def print_approved_users_csv(self, campaign_name, contacts=None):
+        """ Prints a csv of approved users in the format we use for new/disabled account processing"""
+        if type(contacts) == None and self.contacts == None:
+            sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
+            sys.exit(1)
+        elif type(contacts) == None:
+            contacts=self.contacts
+
+        for username, contact in contacts.items():
+            try:
+                print '"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}"'.format( \
+                    'Approved User',
+                    contact['FirstName'],
+                    contact['LastName'],
+                    contact['Account'],
+                    contact['Department'],
+                    contact['PI'],
+                    contact['Project'],
+                    contact['username'],
+                    "",
+                    contact['Email'],
+                    contact['Phone'],
+                    campaign_name,
+                )
+            except KeyError as e:
+                sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
