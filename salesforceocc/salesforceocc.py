@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 import beatbox
 import sys
+import pprint
 
 
 class SalesForceOCC:
     def __init__(self):
         """INit the function"""
-        #self.svc = beatbox.Client()
-        self.svc = beatbox.PythonClient()
+        self.svc = beatbox.Client()
         self.partnerNS = beatbox._tPartnerNS
         self.objectNS = beatbox._tSObjectNS
         self.soapNS = beatbox._tSoapNS
@@ -80,21 +80,10 @@ class SalesForceOCC:
                 pass
 
 
-    #def load_all_contacts(self):
-    #    """ Load all the account.  This might actually fail for more then 1000 users """
-    #
-    #    #Get the account mappings
-    #    contacts = self.svc.query( "SELECT Id,Name, Email, OCC_Y_Server_Username__c, PDC_eRA_Commons__c  FROM Contact" )
-    #
-    #    for contact in contacts:
-    #        try:
-    #            print str(contact[self.objectNS.Name]) + "|" + str(contact[self.objectNS.Email]) + "|" + str(contact[self.objectNS.Id]) + "|"
-    #        except:
-    #            pass
 
     def load_contactids_from_campaign(self, campaign_name, status="Approved User"):
         """ Load the MemberIds of the people in campaign """
-        self.contact_ids = get_contactids_from_campaign(self, campaign_name=campaign_name, status=status)
+        self.contact_ids = self.get_contactids_from_campaign(campaign_name=campaign_name, status=status)
         
     def get_contactids_from_campaign(self, campaign_name, status="Approved User"):
         """ Get the MemberIds of the people in campaign """
@@ -106,7 +95,7 @@ class SalesForceOCC:
             """ % (campaign_name)
 
         campaigns = self.svc.query(query_campaigns)
-        campaign_id = str(campaigns[0]['Id'])
+        campaign_id = str(campaigns[self.partnerNS.records:][0][self.objectNS.Id])
 
         #Get the list of campaign Members CampaignMember.ContactId=Contact.Id
        
@@ -120,7 +109,6 @@ class SalesForceOCC:
         for contact in contacts:
             try:
                 contact_ids.append(str(contact[self.objectNS.ContactId]))
-                print contact_ids
             except KeyError:
                 pass
 
