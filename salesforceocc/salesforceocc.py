@@ -144,6 +144,7 @@ class SalesForceOCC:
             PDC_eRA_Commons__c, OSDC_Username__c, Bionimbus_WEB_Username__c, Email, Name, OCC_Y_Server_Username__c, Phone"
         contacts = self.svc.retrieve(fields, "Contact", contact_ids)
         contacts_dict = {}
+        contact_statuses = self.get_campaign_members_status(campaign_name=campaign_name)
 
         #Loop through and dict the results for latter processing
         for contact in contacts:
@@ -162,12 +163,38 @@ class SalesForceOCC:
                     'id':  str(contact[self.objectNS.Id]),
                     'corehrs': None,
                     'du': None,
+                    'status': contact_statuses[str(contact[self.objectNS.Id])],
                 }
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
 
         return contacts_dict
-            
+
+
+    def get_campaign_members_status(self, campaign_name=None, campaign_id=None):
+        """ Get the Campaign member status for all users in Campaign """
+
+        contact_statuses = {}
+
+        if campaign_id is None and campaign_name is not None:
+            campaign_id = self.get_campaignid(campaign_name=campaign_name)
+        
+        query_campaign_member_status = """SELECT CampaignId, ContactId, Status
+            FROM CampaignMember
+            WHERE CampaignId = '%s'
+            """ % (campaign_id)
+
+        campaign_member_statuses = self.svc.query(query_campaign_member_status)
+        for campaign_member_status in campaign_member_statuses:
+            try:
+                contact_id = str(campaign_member_status[self.objectNS.ContactId])
+                contact_status = str(campaign_member_status[self.objectNS.Status])
+                contact_statuses[contact_id] = contact_status
+            except KeyError:
+                pass
+
+        return contact_statuses
+        
 
     def login(self, username="", password="", url="https://login.salesforce.com/services/Soap/u/28.0"):
         """Login to sales force to use their SOQL nonsense"""
@@ -211,7 +238,7 @@ class SalesForceOCC:
         for username, contact in contacts.items():
             try:
                 print '"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}"'.format( \
-                    'Approved User',
+                    contact['status'],
                     contact['FirstName'],
                     contact['LastName'],
                     contact['Account'],
