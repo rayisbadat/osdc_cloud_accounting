@@ -89,13 +89,7 @@ class SalesForceOCC:
         """ Get the MemberIds of the people in campaign """
         contact_ids = []
 
-        query_campaigns = """SELECT Id, Name 
-            FROM Campaign 
-            WHERE Name='%s'
-            """ % (campaign_name)
-
-        campaigns = self.svc.query(query_campaigns)
-        campaign_id = str(campaigns[self.partnerNS.records:][0][self.objectNS.Id])
+        campaign_id = self.get_campaignid(campaign_name=campaign_name)
 
         #Get the list of campaign Members CampaignMember.ContactId=Contact.Id
       
@@ -115,6 +109,18 @@ class SalesForceOCC:
     
         return contact_ids
 
+
+    def get_campaignid(self, campaign_name=None):
+        """ Get the CampaignID from SF """
+        query_campaigns = """SELECT Id, Name
+            FROM Campaign
+            WHERE Name='%s'
+            """ % (campaign_name)
+
+        campaigns = self.svc.query(query_campaigns)
+        campaign_id = str(campaigns[self.partnerNS.records:][0][self.objectNS.Id])
+        return 
+        
 
     def load_contacts_from_campaign(self, campaign_name, statuses=["Approved User"]):
         """ Create a listing of what we need for each user in a campaign """
