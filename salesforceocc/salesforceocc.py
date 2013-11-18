@@ -119,7 +119,7 @@ class SalesForceOCC:
 
         campaigns = self.svc.query(query_campaigns)
         campaign_id = str(campaigns[self.partnerNS.records:][0][self.objectNS.Id])
-        return 
+        return campaign_id
         
 
     def load_contacts_from_campaign(self, campaign_name, statuses=["Approved User"]):
