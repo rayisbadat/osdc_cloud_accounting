@@ -263,7 +263,9 @@ class SalesForceOCC:
                 pass
         return accounts_dict
 
-    def print_approved_users_csv(self, campaign_name, contacts=None):
+
+
+    def get_approved_users(self, campaign_name, contacts=None):
         """ Prints a csv of approved users in the format we use for new/disabled account processing"""
         if type(contacts) == None and self.contacts == None:
             sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
@@ -271,6 +273,13 @@ class SalesForceOCC:
         elif type(contacts) == None:
             contacts=self.contacts
 
+        return contacts
+
+
+
+    def print_approved_users_csv(self, campaign_name, contacts=None):
+        """ Prints a csv of approved users in the format we use for new/disabled account processing"""
+        contacts = self.get_approved_users(campaign_name=campaign_name,contacts=contacts)
         for username, contact in contacts.items():
             try:
                 print '"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}"'.format( \
@@ -290,3 +299,6 @@ class SalesForceOCC:
                 )
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
+
+
+
