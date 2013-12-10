@@ -145,6 +145,8 @@ class SalesForceOCC:
         contacts = self.svc.retrieve(fields, "Contact", contact_ids)
         contacts_dict = {}
         contact_statuses = self.get_campaign_members_status(campaign_name=campaign_name)
+        contact_quotas_core = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='core')
+        contact_quotas_storage = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='storage')
 
         #Loop through and dict the results for latter processing
         for contact in contacts:
@@ -161,8 +163,8 @@ class SalesForceOCC:
                     'Email': str(contact[self.objectNS.Email]),
                     'Phone': str(contact[self.objectNS.Phone]),
                     'id':  str(contact[self.objectNS.Id]),
-                    'corehrs': None,
-                    'du': None,
+                    'core': str(contact_quotas_core[str(contact[self.objectNS.Id])]),
+                    'storage': str(contact_quotas_storage[str(contact[self.objectNS.Id])]),
                     'status': contact_statuses[str(contact[self.objectNS.Id])],
                 }
             except KeyError as e:
@@ -194,8 +196,42 @@ class SalesForceOCC:
                 pass
 
         return contact_statuses
-        
 
+    def get_campaign_members_quotas(self, campaign_name=None, campaign_id=None, quota='core'):
+        """ Get the Campaign member quotas for all users in Campaign """
+
+        contacts_quota = {}
+
+        if campaign_id is None and campaign_name is not None:
+            campaign_id = self.get_campaignid(campaign_name=campaign_name)
+
+        if quota == 'core':
+            query_campaign_members_quota = """SELECT ContactId, Core_Quota__c
+                FROM CampaignMember
+                WHERE CampaignId = '%s'
+                """ % (campaign_id)
+            quota_indexer = self.objectNS.Core_Quota__c
+        elif quota == 'storage':
+            query_campaign_members_quota = """SELECT ContactId, Storage_Quota__c
+                FROM CampaignMember
+                WHERE CampaignId = '%s'
+                """ % (campaign_id)
+            quota_indexer = self.objectNS.Storage_Quota__c
+        else:
+            raise KeyError("No core or storage quota provided")
+
+        campaign_members_quota = self.svc.query(query_campaign_members_quota)
+
+        for campaign_member_quota in campaign_members_quota:
+            try:
+                contact_id = str(campaign_member_quota[self.objectNS.ContactId])
+                contact_quota = str(campaign_member_quota[quota_indexer])
+                contacts_quota[contact_id] = contact_quota
+            except KeyError:
+                pass
+
+        return contacts_quota
+        
     def login(self, username="", password="", url="https://login.salesforce.com/services/Soap/u/28.0"):
         """Login to sales force to use their SOQL nonsense"""
         #I dont want to use .net and their shitty code explorer
@@ -237,7 +273,7 @@ class SalesForceOCC:
 
         for username, contact in contacts.items():
             try:
-                print '"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}"'.format( \
+                print '"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}"'.format( \
                     contact['status'],
                     contact['FirstName'],
                     contact['LastName'],
@@ -249,6 +285,8 @@ class SalesForceOCC:
                     contact['Email'],
                     contact['Phone'],
                     campaign_name,
+                    contact['core'],
+                    contact['storage'],
                 )
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")

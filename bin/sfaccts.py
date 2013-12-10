@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from salesforceocc import SalesForceOCC
 import ConfigParser
+import pprint
 
 
 if __name__ == "__main__":
@@ -21,4 +22,6 @@ if __name__ == "__main__":
 
     sfocc.login(username=settings['sfusername'], password=settings['sfpassword'])
     contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['cloud'],  statuses=["Approved User", "Application Pending"])
+    #contact_statuses = sfocc.get_campaign_members_status(campaign_name=settings['cloud'])
+    #pprint.pprint(contact_statuses)
     sfocc.print_approved_users_csv(campaign_name=settings['cloud'], contacts=contacts)
