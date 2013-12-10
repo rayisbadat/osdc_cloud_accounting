@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from salesforceocc import SalesForceOCC
 import ConfigParser
+import pwd
+import grp
 import pprint
 
 if __name__ == "__main__":
@@ -29,5 +31,6 @@ if __name__ == "__main__":
     for username,fields in members_list.items():
         pprint.pprint(username)
         pprint.pprint(fields)
+        pprint.pprint( pwd.getpwnam(username) )
     
 
