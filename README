@@ -28,4 +28,24 @@ cloud_report.py - Main command to generate usage/billing reports
 
 Dependencies:
    python-numpy
+   BeatBox
+
+
+Install
+
+*) Download repo
+*) python setup.py install the various directories (I do it into virtualenv folders)
+*) Create dir /etc/osdc_cloud_accounting/
+*) Copy in settings.py and settings.sh into /etc/osdc_cloud_accounting/ (FIXME: Make example files)
+*) Create a working /etc/skel if doing account creations
+root@kg14-compute-1:/etc/skel# ls -lahtr /etc/skel/
+total 36K
+-rw-r--r--   1 root root  675 Apr 10  2010 .profile
+-rw-r--r--   1 root root  220 Apr 10  2010 .bash_logout
+-rw-r--r--   1 root root 3.4K Dec 29  2012 .bashrc.dpkg-dist
+drwx------   2 root root 4.0K Jul 30 22:29 .ssh
+-rw-r--r--   1 root root 3.2K Jul 30 22:30 .bashrc
+drwxr-xr-x   3 root root 4.0K Jul 30 22:30 .
+drwxr-xr-x 119 root root  12K Dec 10 17:44 ..
+
 

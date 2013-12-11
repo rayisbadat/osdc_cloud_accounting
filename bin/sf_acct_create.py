@@ -26,7 +26,6 @@ if __name__ == "__main__":
     #Load up a list of the users in SF that are approved for this cloud
     sfocc.login(username=settings['salesforceocc']['sfusername'], password=settings['salesforceocc']['sfpassword'])
     contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['general']['cloud'],  statuses=["Approved User", "Application Pending"])
-    #sfocc.print_approved_users_csv(campaign_name=settings['general']['cloud'], contacts=contacts)
     members_list = sfocc.get_approved_users(campaign_name=settings['general']['cloud'], contacts=contacts)
 
     #Loop through list of members and run the bash scripts that will create the account
@@ -34,7 +33,6 @@ if __name__ == "__main__":
     for username,fields in members_list.items():
         try:
             user_exists = pwd.getpwnam(username)
-            pass
         except:
             if username:
                 pprint.pprint(fields)
@@ -62,7 +60,6 @@ if __name__ == "__main__":
                     fields['core_quota'],
                     fields['storage_quota'] + 'TB',
                 ]
-                pprint.pprint( cmd )
                 try:
                     result = subprocess.check_call( cmd )
                 except subprocess.CalledProcessError, e:
