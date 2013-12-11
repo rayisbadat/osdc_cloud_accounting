@@ -2,7 +2,23 @@
 USERNAME=${1}
 CORES=${2}
 
-source /etc/osdc_cloud_accounting/admin_auth
+if [ -e /etc/osdc_cloud_accounting/admin_auth ]
+then
+    source  /etc/osdc_cloud_accounting/admin_auth
+else
+    echo "Error: can not locate /etc/osdc_cloud_accounting/admin_auth"
+    exit 1
+fi
+
+if [ -e /etc/osdc_cloud_accounting/settings.sh ]
+then
+    source  /etc/osdc_cloud_accounting/settings.sh
+else
+    echo "Error: can not locate /etc/osdc_cloud_accounting/settings "
+    exit 1
+fi
+
+
 if [ -z "$USERNAME" ] || [ -z "$CORES" ]
 then
     echo "Usage: $0 USERNAME cores"

@@ -10,13 +10,13 @@ NAME=${1}
 USERNAME=${2}
 PASSWD=${3}
 HOME_DIR=${4}
-QUOTA=${5}
+STORAGE_QUOTA=${5}
 DEFAULT_SHELL=/bin/bash
 
 #Pull in the ldap info
-if [ -e /etc/osdc_cloud_accounting/settings ]
+if [ -e /etc/osdc_cloud_accounting/settings.sh ]
 then
-    source  /etc/osdc_cloud_accounting/settings
+    source  /etc/osdc_cloud_accounting/settings.sh
 else
     echo "Error: can not locate /etc/osdc_cloud_accounting/settings "
     exit 1
@@ -24,14 +24,10 @@ fi
 
 
 #Check that we have the required number of params
-if   [ -z "$NAME" ]  ||  [ -z "$USERNAME" ] || [ -z "$PASSWD" ] || [ -z "$HOME_DIR" ]
+if   [ -z "$NAME" ]  ||  [ -z "$USERNAME" ] || [ -z "$PASSWD" ] || [ -z "$HOME_DIR" ] || [ -z "$STORAGE_QUOTA" ]
 then
-	echo "Usage: $0 ACTUAL_NAME USER_NAME PASSWORD HOME_DIR"
+	echo "Usage: $0 ACTUAL_NAME USER_NAME PASSWORD HOME_DIR STORAGE_QUOTA"
 	exit 1
-fi
-if [ -z "$QUOTA" ]
-then
-    QUOTA=$DISK_QUOTA
 fi
 
 
@@ -63,7 +59,7 @@ sambaSID: $SAMBA_SID
 -
 add: sambaAcctFlags
 sambaAcctFlags: [UX]
-" | ldapmodify -a -x -D "$ADMINCN" -w$(cat $LDAP_SECRET) 2>/dev/null
+" | ldapmodify -a -x -D "$ADMINCN" -w$(cat $LDAP_SECRET) 
     if [ "$?" -ne "0" ]
     then
 	    echo "ldapmodify failed"
@@ -71,7 +67,7 @@ sambaAcctFlags: [UX]
     fi
 }
 create_user() {
-    /usr/sbin/cpu useradd -s${DEFAULT_SHELL} -Gsudo_apt -m $USERNAME 2>/dev/null
+    /usr/sbin/cpu useradd -s${DEFAULT_SHELL} -Gsudo_apt -m $USERNAME 
     if [ "$?" -ne "0" ]
     then
 	    echo "ldapmodify failed"
@@ -85,7 +81,7 @@ create_user() {
 }
 
 set_quota(){
-    gluster volume quota $GLUSTER_VOL limit-usage /users/${USERNAME} ${QUOTA} 2>/dev/null || true
+    gluster volume quota $GLUSTER_VOL limit-usage /users/${USERNAME} ${STORAGE_QUOTA}
 }
 
 ##Actually run commands

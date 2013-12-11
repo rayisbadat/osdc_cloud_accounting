@@ -141,7 +141,7 @@ class SalesForceOCC:
         #Fields to pull
         fields = "Id, FirstName, AccountId, \
             LastName,Department,Principal_Investigator__c,Project_Name_Description__c, \
-            PDC_eRA_Commons__c, OSDC_Username__c, Bionimbus_WEB_Username__c, Email, Name, OCC_Y_Server_Username__c, Phone"
+            PDC_eRA_Commons__c, OSDC_Username__c, Bionimbus_WEB_Username__c, Email, Name, OCC_Y_Server_Username__c, Phone, Authentication_Method__c"
         contacts = self.svc.retrieve(fields, "Contact", contact_ids)
         contacts_dict = {}
         contact_statuses = self.get_campaign_members_status(campaign_name=campaign_name)
@@ -163,9 +163,10 @@ class SalesForceOCC:
                     'Email': str(contact[self.objectNS.Email]),
                     'Phone': str(contact[self.objectNS.Phone]),
                     'id':  str(contact[self.objectNS.Id]),
-                    'core': str(contact_quotas_core[str(contact[self.objectNS.Id])]),
-                    'storage': str(contact_quotas_storage[str(contact[self.objectNS.Id])]),
+                    'core_quota': str(contact_quotas_core[str(contact[self.objectNS.Id])]),
+                    'storage_quota': str(contact_quotas_storage[str(contact[self.objectNS.Id])]),
                     'status': contact_statuses[str(contact[self.objectNS.Id])],
+                    'Authentication_Method': str(contact[self.objectNS.Authentication_Method__c])
                 }
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
@@ -226,7 +227,10 @@ class SalesForceOCC:
             try:
                 contact_id = str(campaign_member_quota[self.objectNS.ContactId])
                 contact_quota = str(campaign_member_quota[quota_indexer])
-                contacts_quota[contact_id] = contact_quota
+                if contact_quota:
+                    contacts_quota[contact_id] = int(float(contact_quota))
+                else:
+                    contacts_quota[contact_id] = None
             except KeyError:
                 pass
 
@@ -294,8 +298,8 @@ class SalesForceOCC:
                     contact['Email'],
                     contact['Phone'],
                     campaign_name,
-                    contact['core'],
-                    contact['storage'],
+                    contact['core_quota'],
+                    contact['storage_quota'],
                 )
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")

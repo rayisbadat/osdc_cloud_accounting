@@ -1,6 +1,22 @@
 #!/bin/bash
-source /etc/osdc_cloud_accounting/admin_auth
-source /etc/osdc_cloud_accounting/settings
+
+if [ -e /etc/osdc_cloud_accounting/admin_auth ]
+then
+    source  /etc/osdc_cloud_accounting/admin_auth
+else
+    echo "Error: can not locate /etc/osdc_cloud_accounting/admin_auth"
+    exit 1
+fi
+
+if [ -e /etc/osdc_cloud_accounting/settings.sh ]
+then
+    source  /etc/osdc_cloud_accounting/settings.sh
+else
+    echo "Error: can not locate /etc/osdc_cloud_accounting/settings "
+    exit 1
+fi
+
+
 
 USERNAME=${1}
 HOMEDIR=${2}

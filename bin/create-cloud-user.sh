@@ -3,7 +3,22 @@
 #set -v
 #set -e
 
-source  /etc/osdc_cloud_accounting//admin_auth
+if [ -e /etc/osdc_cloud_accounting/admin_auth ]
+then
+    source  /etc/osdc_cloud_accounting/admin_auth
+else
+    echo "Error: can not locate /etc/osdc_cloud_accounting/admin_auth"
+    exit 1
+fi
+
+if [ -e /etc/osdc_cloud_accounting/settings.sh ]
+then
+    source  /etc/osdc_cloud_accounting/settings.sh
+else
+    echo "Error: can not locate /etc/osdc_cloud_accounting/settings "
+    exit 1
+fi
+
 
 # the id of the member role
 MEMBER_ROLE=$(keystone role-list | perl -ne 'm/\|\s+(\S+)\s+\|\s+Member/ && print "$1\n"')
@@ -17,12 +32,12 @@ USERNAME=$1
 PASSWORD=$2
 EMAIL=$3
 HOME_DIR=$4
-if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$EMAIL" ] || [ -z "$HOME_DIR" ]
+CORE_QUOTA=$5
+if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$EMAIL" ] || [ -z "$HOME_DIR" ] || [ -z "$CORE_QUOTA" ]
 then
-	echo "Usage: $0 Username Password Email Home_Directory_Path"
+	echo "Usage: $0 Username Password Email Home_Directory_Path STORAGE_QUOTA"
 	exit 1
 fi
-
 
 function get_id () {
     echo `$@ | awk '/ id / { print $4 }'`
@@ -71,7 +86,7 @@ echo "export EC2_SECRET_KEY=$EC2_SECRET_KEY" >> $credential_file
 
 if [ -e $HOME_DIR/.ssh/authorized_keys ]
 then
-    nova $NOVA_INFO_STRING keypair-add --pub_key $HOME_DIR/.ssh/authorized_keys $USERNAME
+    nova $NOVA_INFO_STRING keypair-add --pub_key $HOME_DIR/.ssh/authorized_keys $USERNAME 
 fi
 
-
+/usr/local/sbin/update_nova_core_quotas.sh $USERNAME $CORE_QUOTA 

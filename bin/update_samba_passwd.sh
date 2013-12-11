@@ -11,9 +11,9 @@ then
 fi
 
 #Pull in the ldap info
-if [ -e /etc/osdc_cloud_accounting/settings ]
+if [ -e /etc/osdc_cloud_accounting/settings.sh ]
 then
-    source  /etc/osdc_cloud_accounting/settings
+    source  /etc/osdc_cloud_accounting/settings.sh
 else
     echo "Error: can not locate /etc/osdc_cloud_accounting/settings "
     exit 1
