@@ -2,12 +2,27 @@
 from salesforceocc import SalesForceOCC
 import ConfigParser
 import pwd
-import pprint
 import sys
-import re
 import subprocess
+import getopt
+import pprint
 
 if __name__ == "__main__":
+
+    #Load in the CLI flags
+    run = True
+    printcsv = False
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "", ["print", "norun"])
+    except getopt.GetoptError:
+        sys.stderr.write("ERROR: Getopt\n")
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt in ("--print"):
+            printcsv = True
+        elif opt in ("--norun"):
+            run = False
+
     sfocc = SalesForceOCC()
     #read in settings
     Config = ConfigParser.ConfigParser()
@@ -35,7 +50,6 @@ if __name__ == "__main__":
             user_exists = pwd.getpwnam(username)
         except:
             if username:
-                pprint.pprint(fields)
                 if fields['Authentication_Method'] == 'OpenID':
                     method = 'openid'
                 else:
@@ -43,7 +57,7 @@ if __name__ == "__main__":
                 
                 #OpenIDs were the sart but now we need to check if anything
                 #is set for this email field, Email is now just contact field
-                if fields['login_identifier'] == 'None' or fields['login_identifier'] == None:
+                if fields['login_identifier'] == 'None' or fields['login_identifier'] == None or not fields['login_identifier']:
                     login_identifier = fields['Email']
                 else:
                     login_identifier = fields['login_identifier']
@@ -69,8 +83,11 @@ if __name__ == "__main__":
                     fields['storage_quota'] + 'TB',
                 ]
                 try:
-                    print cmd
-                    #result = subprocess.check_call( cmd )
+                    if printcsv:
+                        pprint.pprint(cmd)
+                        pprint.pprint(fields)
+                    if run:
+                        result = subprocess.check_call( cmd )
                 except subprocess.CalledProcessError, e:
                     sys.stderr.write("Error creating  new user:  %s\n" % username )
                     sys.stderr.write("%s\n" % e.output)
