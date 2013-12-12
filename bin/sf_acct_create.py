@@ -41,6 +41,14 @@ if __name__ == "__main__":
                 else:
                     method = 'shibboleth'
                 
+                #OpenIDs were the sart but now we need to check if anything
+                #is set for this email field, Email is now just contact field
+                if fields['login_identifier'] == 'None' or fields['login_identifier'] == None:
+                    login_identifier = fields['Email']
+                else:
+                    login_identifier = fields['login_identifier']
+
+                
                 #I am bad at the None checking and convert it to a string at one point
                 #convert none to default
                 if fields['core_quota'] == 'None' or fields['core_quota'] == None:
@@ -54,14 +62,15 @@ if __name__ == "__main__":
                     '/usr/local/sbin/create-user.sh',
                     fields['Name'],
                     fields['username'],
-                    fields['Email'],
+                    login_identifier,
                     method,
                     settings['tukey']['cloud'],
                     fields['core_quota'],
                     fields['storage_quota'] + 'TB',
                 ]
                 try:
-                    result = subprocess.check_call( cmd )
+                    print cmd
+                    #result = subprocess.check_call( cmd )
                 except subprocess.CalledProcessError, e:
                     sys.stderr.write("Error creating  new user:  %s\n" % username )
                     sys.stderr.write("%s\n" % e.output)

@@ -4,7 +4,7 @@ if [ -e /etc/osdc_cloud_accounting/admin_auth ]
 then
     source  /etc/osdc_cloud_accounting/admin_auth
 else
-    echo "Error: can not locate /etc/osdc_cloud_accounting/admin_auth"
+    echo "$0 Error: can not locate /etc/osdc_cloud_accounting/admin_auth"
     exit 1
 fi
 
@@ -14,7 +14,7 @@ if [ -e /etc/osdc_cloud_accounting/settings.sh ]
 then
     source  /etc/osdc_cloud_accounting/settings.sh
 else
-    echo "Error: can not locate /etc/osdc_cloud_accounting/settings "
+    echo "$0 Error: can not locate /etc/osdc_cloud_accounting/settings "
     exit 1
 fi
 
@@ -27,7 +27,7 @@ RESERVEDNAMES=" adminUser ec2 nova glance swift "
 check_reserved() {
     if [[  "$RESERVEDNAMES" =~ "$USERNAME" ]]
     then
-        echo "ERROR: TRIED DELETING SYSTEM USER!!!!"
+        echo "$0 ERROR: TRIED DELETING SYSTEM USER!!!!"
         exit 1
     fi
 }
