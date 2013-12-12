@@ -139,9 +139,11 @@ class SalesForceOCC:
         accounts = self.get_accounts()
 
         #Fields to pull
-        fields = "Id, FirstName, AccountId, \
-            LastName,Department,Principal_Investigator__c,Project_Name_Description__c, \
-            PDC_eRA_Commons__c, OSDC_Username__c, Bionimbus_WEB_Username__c, Email, Name, OCC_Y_Server_Username__c, Phone, Authentication_Method__c"
+        fields = "Id, FirstName, AccountId, LastName,Department, \
+            Principal_Investigator__c, Project_Name_Description__c, \
+            PDC_eRA_Commons__c, OSDC_Username__c, Bionimbus_WEB_Username__c, \
+            Email, Name, OCC_Y_Server_Username__c, Phone, Authentication_Method__c, \
+            OpenID_Account__c"
         contacts = self.svc.retrieve(fields, "Contact", contact_ids)
         contacts_dict = {}
         contact_statuses = self.get_campaign_members_status(campaign_name=campaign_name)
@@ -166,7 +168,8 @@ class SalesForceOCC:
                     'core_quota': str(contact_quotas_core[str(contact[self.objectNS.Id])]),
                     'storage_quota': str(contact_quotas_storage[str(contact[self.objectNS.Id])]),
                     'status': contact_statuses[str(contact[self.objectNS.Id])],
-                    'Authentication_Method': str(contact[self.objectNS.Authentication_Method__c])
+                    'Authentication_Method': str(contact[self.objectNS.Authentication_Method__c]),
+                    'login_identifier': str(contact[self.objectNS.OpenID_Account__c]),
                 }
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
@@ -300,6 +303,7 @@ class SalesForceOCC:
                     campaign_name,
                     contact['core_quota'],
                     contact['storage_quota'],
+                    contact['OpenID']
                 )
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
