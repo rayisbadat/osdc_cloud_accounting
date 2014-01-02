@@ -18,7 +18,7 @@ if [ -e /etc/osdc_cloud_accounting/settings.sh ]
 then
     source  /etc/osdc_cloud_accounting/settings.sh
 else
-    echo "Error: can not locate /etc/osdc_cloud_accounting/settings "
+    echo "$0 Error: can not locate /etc/osdc_cloud_accounting/settings "
     exit 1
 fi
 
@@ -59,29 +59,29 @@ sambaSID: $SAMBA_SID
 -
 add: sambaAcctFlags
 sambaAcctFlags: [UX]
-" | ldapmodify -a -x -D "$ADMINCN" -w$(cat $LDAP_SECRET) 
+" | ldapmodify -a -x -D "$ADMINCN" -w$(cat $LDAP_SECRET) &>/dev/null
     if [ "$?" -ne "0" ]
     then
-	    echo "ldapmodify failed"
+	    echo "$0 Error: ldapmodify failed for CIFS creds"
 	    exit 1
     fi
 }
 create_user() {
-    /usr/sbin/cpu useradd -s${DEFAULT_SHELL} -Gsudo_apt -m $USERNAME 
+    /usr/sbin/cpu useradd -s${DEFAULT_SHELL} -Gsudo_apt -m $USERNAME  &>/dev/null
     if [ "$?" -ne "0" ]
     then
-	    echo "ldapmodify failed"
+	    echo "$0 Error: cpu useradd failed"
 	    exit 1
     fi
 
     #create the user readable one
     echo "username=$USERNAME" > $HOME_DIR/smbpassword.txt
     echo "password=$PASSWD" >> $HOME_DIR/smbpassword.txt
-    chmod o-rwx $HOME_DIR
+    chmod o-rwx $HOME_DIR &>/dev/null
 }
 
 set_quota(){
-    gluster volume quota $GLUSTER_VOL limit-usage /users/${USERNAME} ${STORAGE_QUOTA}
+    gluster volume quota $GLUSTER_VOL limit-usage /users/${USERNAME} ${STORAGE_QUOTA} &>/dev/null
 }
 
 ##Actually run commands

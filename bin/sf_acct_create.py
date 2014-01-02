@@ -2,12 +2,27 @@
 from salesforceocc import SalesForceOCC
 import ConfigParser
 import pwd
-import pprint
 import sys
-import re
 import subprocess
+import getopt
+import pprint
 
 if __name__ == "__main__":
+
+    #Load in the CLI flags
+    run = True
+    printcsv = False
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "", ["print", "norun"])
+    except getopt.GetoptError:
+        sys.stderr.write("ERROR: Getopt\n")
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt in ("--print"):
+            printcsv = True
+        elif opt in ("--norun"):
+            run = False
+
     sfocc = SalesForceOCC()
     #read in settings
     Config = ConfigParser.ConfigParser()
@@ -26,7 +41,6 @@ if __name__ == "__main__":
     #Load up a list of the users in SF that are approved for this cloud
     sfocc.login(username=settings['salesforceocc']['sfusername'], password=settings['salesforceocc']['sfpassword'])
     contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['general']['cloud'],  statuses=["Approved User", "Application Pending"])
-    #sfocc.print_approved_users_csv(campaign_name=settings['general']['cloud'], contacts=contacts)
     members_list = sfocc.get_approved_users(campaign_name=settings['general']['cloud'], contacts=contacts)
 
     #Loop through list of members and run the bash scripts that will create the account
@@ -34,14 +48,20 @@ if __name__ == "__main__":
     for username,fields in members_list.items():
         try:
             user_exists = pwd.getpwnam(username)
-            pass
         except:
             if username:
-                pprint.pprint(fields)
                 if fields['Authentication_Method'] == 'OpenID':
                     method = 'openid'
                 else:
                     method = 'shibboleth'
+                
+                #OpenIDs were the sart but now we need to check if anything
+                #is set for this email field, Email is now just contact field
+                if fields['login_identifier'] == 'None' or fields['login_identifier'] == None or not fields['login_identifier']:
+                    login_identifier = fields['Email']
+                else:
+                    login_identifier = fields['login_identifier']
+
                 
                 #I am bad at the None checking and convert it to a string at one point
                 #convert none to default
@@ -56,15 +76,18 @@ if __name__ == "__main__":
                     '/usr/local/sbin/create-user.sh',
                     fields['Name'],
                     fields['username'],
-                    fields['Email'],
+                    login_identifier,
                     method,
                     settings['tukey']['cloud'],
                     fields['core_quota'],
                     fields['storage_quota'] + 'TB',
                 ]
-                pprint.pprint( cmd )
                 try:
-                    result = subprocess.check_call( cmd )
+                    if printcsv:
+                        pprint.pprint(cmd)
+                        pprint.pprint(fields)
+                    if run:
+                        result = subprocess.check_call( cmd )
                 except subprocess.CalledProcessError, e:
                     sys.stderr.write("Error creating  new user:  %s\n" % username )
                     sys.stderr.write("%s\n" % e.output)

@@ -15,7 +15,7 @@ if [ -e /etc/osdc_cloud_accounting/settings.sh ]
 then
     source  /etc/osdc_cloud_accounting/settings.sh
 else
-    echo "Error: can not locate /etc/osdc_cloud_accounting/settings "
+    echo "$0 Error: can not locate /etc/osdc_cloud_accounting/settings "
     exit 1
 fi
 
@@ -46,10 +46,10 @@ sambaSID: $SAMBA_SID
 -
 replace: sambaAcctFlags
 sambaAcctFlags: [UX]
-" | ldapmodify -a -x -D "$ADMINCN" -w$(cat $LDAP_SECRET) 2>/dev/null
+" | ldapmodify -a -x -D "$ADMINCN" -w$(cat $LDAP_SECRET) &>/dev/null
     if [ "$?" -ne "0" ]
     then
-            echo "ldapmodify failed"
+            echo "$0 Error: ldapmodify failed to add samba creds"
             exit 1
     fi
 }

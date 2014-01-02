@@ -8,6 +8,8 @@ else
     exit 1
 fi
 
+
+#Pull in the ldap info
 if [ -e /etc/osdc_cloud_accounting/settings.sh ]
 then
     source  /etc/osdc_cloud_accounting/settings.sh
@@ -16,22 +18,27 @@ else
     exit 1
 fi
 
-
-
 USERNAME=${1}
-HOMEDIR=${2}
+GROUP=${2}
 
 
-update_homedir() {
-        echo "
-dn: uid=$USERNAME,ou=people,$BASEDN
+RESERVEDNAMES=" adminUser ec2 nova glance swift "
+
+check_reserved() {
+    if [[  "$RESERVEDNAMES" =~ "$USERNAME" ]]
+    then
+        echo "$0 ERROR: TRIED DELETING SYSTEM USER!!!!"
+        exit 1
+    fi
+}
+add_user_to_ldap_groups() {
+        echo "dn: cn=$GROUP,ou=group,$BASEDN
 changetype: modify
-replace: homeDirectory
-homeDirectory: $HOMEDIR
-"  | ldapmodify -a -x -D "$ADMINCN" -w$(cat $LDAP_SECRET) &>/dev/null
+add: memberUid
+memberUid: $USERNAME"  | ldapmodify -a -x -D "$ADMINCN" -w$(cat $LDAP_SECRET) &>/dev/null
         if [ "$?" -ne "0" ]
         then
-            echo "$0 ERROR: changing user $USERNAME homedir in ldap"
+            echo "ERROR: adding user $USERNAME to ldap group $group failed"
             exit 4
         fi 
 }
@@ -39,15 +46,9 @@ homeDirectory: $HOMEDIR
 #Check that we have the required number of params
 if   [ -z "$USERNAME" ] 
 then
-    echo "No username specified"
-	echo "Usage: $0 USER_NAME /path/to/home/dir "
-	exit 1
-fi
-if   [ -z "$HOMEDIR" ] 
-then
-    echo "No HOMEDIR specified"
-	echo "Usage: $0 USER_NAME /path/to/home/dir "
+	echo "Usage: $0 USER_NAME GROUP "
 	exit 1
 fi
 
-update_homedir
+check_reserved
+add_user_to_ldap_groups
