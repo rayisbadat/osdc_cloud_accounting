@@ -2,6 +2,7 @@ import sys
 import ConfigParser
 import socket
 import re
+import pprint
 
 #Db stuff
 from sqlalchemy import create_engine, insert, text
@@ -15,7 +16,7 @@ import pytz
 import numpy
 
 class RepQuota:
-    def __init__(self, config_file=".settings"):
+    def __init__(self, config_file="/etc/osdc_cloud_accounting/settings.py"):
         """Polls gluster for quotas and save into dict"""
         self.settings = {}
         self.repquota_regex='(\S+)\s+--\s+(\d+)'
@@ -119,7 +120,7 @@ class RepQuota:
         conn = self.db_connect(self.settings['db_database'])
         insert = []
         for path, value in self.dus.items():
-            insert.append({'date': self.now_time,
+            insert.append({'date': self.now_time.strftime(self.settings['timeformat']),
                 'path': path,
                 'value': int(value)
             })
