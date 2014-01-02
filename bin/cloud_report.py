@@ -91,7 +91,7 @@ if __name__ == "__main__":
             sf = True
 
     #initialize the clase with credentials
-    nova_user_reports = NovaUserReporting(".settings")
+    nova_user_reports = NovaUserReporting("/etc/osdc_cloud_accounting/settings.py")
     nova_user_reports.load_stats(start_date=start_date, end_date=end_date)
     nova_user_reports.gen_csv()
 

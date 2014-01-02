@@ -57,8 +57,9 @@ class NovaUserReporting:
         self.csv = []
 
         #read in settings
+        self.config_file = config_file
         Config = ConfigParser.ConfigParser()
-        Config.read(config_file)
+        Config.read(self.config_file)
         sections = ['general','novauserreporting','salesforceocc']
         for section in sections:
             options = Config.options(section)
@@ -377,7 +378,7 @@ class NovaUserReporting:
 
     def get_du(self, path=None, start_date=None, end_date=None):
         """AVG the gluster.$cloud table for a path corresponding to users homedir...hopefully"""
-        g = RepQuota()
+        g = RepQuota(config_file=self.config_file)
         try:
             if self.settings['du_percentile'].isdigit():
                 du = g.get_95thp_du(
