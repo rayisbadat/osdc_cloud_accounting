@@ -1,0 +1,63 @@
+This is a collection of scripts and modules to do various
+accounting and billing stuff on the OSDC infrastructure using
+python.
+
+NovaUserReporting - It queries nova db and uses PollGluster to
+    generate user usage statistics and email them as a csv.
+    IT also is used to push to our Salesforce.com based invoice
+    system.
+
+PollGluster - It is a poller that basically parses
+    gluster volume USER-HOME into a table, then queries it
+    when needed.  Superseceded by repquota.py
+
+RepQuota - This polls an xnetid script that reports the 
+    filesystem quotas.  Allows us to track people outside
+    of gluster limited path based quota reporting.
+
+UnitConversion - Found it on StackExchange, its useful for
+    converting disk units.
+
+SalesforceOCC -  Module built around Beatbox to allow us 
+    to generate info about users in Salesforce and push
+    invoicing.   Work in progress.
+
+
+cloud_report.py - Main command to generate usage/billing reports
+
+
+Dependencies:
+<<<<<<< HEAD
+    python-numpy
+    sqlalchemy
+    libxml2-dev libxslt-dev
+    keystone
+    python-keystoneclient
+    python-novaclient
+    MySQL-python
+    libmysqlclient-dev
+     
+=======
+   python-numpy
+   BeatBox
+
+
+Install
+
+*) Download repo
+*) python setup.py install the various directories (I do it into virtualenv folders)
+*) Create dir /etc/osdc_cloud_accounting/
+*) Copy in settings.py and settings.sh into /etc/osdc_cloud_accounting/ (FIXME: Make example files)
+*) Create a working /etc/skel if doing account creations
+root@kg14-compute-1:/etc/skel# ls -lahtr /etc/skel/
+total 36K
+-rw-r--r--   1 root root  675 Apr 10  2010 .profile
+-rw-r--r--   1 root root  220 Apr 10  2010 .bash_logout
+-rw-r--r--   1 root root 3.4K Dec 29  2012 .bashrc.dpkg-dist
+drwx------   2 root root 4.0K Jul 30 22:29 .ssh
+-rw-r--r--   1 root root 3.2K Jul 30 22:30 .bashrc
+drwxr-xr-x   3 root root 4.0K Jul 30 22:30 .
+drwxr-xr-x 119 root root  12K Dec 10 17:44 ..
+>>>>>>> ad2865ea9097f556d0c817f44aacd1b9348fe003
+
+
