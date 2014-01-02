@@ -60,8 +60,12 @@ if __name__ == "__main__":
             now = datetime.now()
             date = now.replace(day=1) - timedelta(days=1)
             start_date = date.strftime("%Y-%m-01 00:00:00")
-            end_date = (date.replace(month=date.month + 1, day=1) -
-                timedelta(days=1)).strftime("%Y-%m-%d 23:59:59")
+            if date.month + 1 == 13:
+                end_date = (date.replace(month=1, day=1, year=date.year+1) -
+                    timedelta(days=1)).strftime("%Y-%m-%d 23:59:59")
+            else:
+                end_date = (date.replace(month=date.month + 1, day=1) -
+                    timedelta(days=1)).strftime("%Y-%m-%d 23:59:59")
         elif opt in ("--thisweek"):
             now = datetime.now()
             year = int(now.strftime("%Y"))
