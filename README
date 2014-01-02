@@ -27,5 +27,14 @@ cloud_report.py - Main command to generate usage/billing reports
 
 
 Dependencies:
-   python-numpy
+    python-numpy
+    sqlalchemy
+    libxml2-dev libxslt-dev
+    keystone
+    python-keystoneclient
+    python-novaclient
+    MySQL-python
+    libmysqlclient-dev
+     
+
 
