@@ -27,20 +27,14 @@ cloud_report.py - Main command to generate usage/billing reports
 
 
 Dependencies:
-<<<<<<< HEAD
-    python-numpy
-    sqlalchemy
+    numpy (pip if in virtualenv)
+    sqlalchemy (pip if in virtualenv)
     libxml2-dev libxslt-dev
-    keystone
-    python-keystoneclient
-    python-novaclient
-    MySQL-python
+    python-keystoneclient (pip if in virtualenv)
+    python-novaclient (pip if in virtualenv)
+    MySQL-python (pip if in virtualenv)
     libmysqlclient-dev
      
-=======
-   python-numpy
-   BeatBox
-
 
 Install
 
@@ -58,6 +52,5 @@ drwx------   2 root root 4.0K Jul 30 22:29 .ssh
 -rw-r--r--   1 root root 3.2K Jul 30 22:30 .bashrc
 drwxr-xr-x   3 root root 4.0K Jul 30 22:30 .
 drwxr-xr-x 119 root root  12K Dec 10 17:44 ..
->>>>>>> ad2865ea9097f556d0c817f44aacd1b9348fe003
 
 

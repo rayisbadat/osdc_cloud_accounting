@@ -21,7 +21,7 @@ fi
 
 
 # the id of the member role
-MEMBER_ROLE=$(keystone role-list 2>/dev/null | perl -ne 'm/\|\s+(\S+)\s+\|\s+Member/ && print "$1\n"')
+MEMBER_ROLE=$(/usr/bin/keystone role-list 2>/dev/null | perl -ne 'm/\|\s+(\S+)\s+\|\s+Member/ && print "$1\n"')
 if [ -z "$MEMBER_ROLE" ]
 then
     echo "$0 Error: Could not determine Member role id for cloud"
@@ -43,14 +43,19 @@ function get_id () {
     echo `$@ | awk '/ id / { print $4 }'`
 }
 
-NEW_TENANT=$(get_id keystone tenant-create --name=$USERNAME 2>/dev/null)
+NEW_TENANT=$(get_id /usr/bin/keystone tenant-create --name=$USERNAME 2>/dev/null)
 
-NEW_USER=$(get_id keystone user-create --name=$USERNAME \
+NEW_USER=$(get_id /usr/bin/keystone user-create --name=$USERNAME \
                                         --pass="$PASSWORD" \
                                         --email=$EMAIL 2>/dev/null)
                                         
 # The Member role is used by Horizon and Swift so we need to keep it:                                 
-keystone user-role-add --user $NEW_USER --role $MEMBER_ROLE --tenant_id $NEW_TENANT &>/dev/null
+/usr/bin/keystone --debug user-role-add --user $NEW_USER --role $MEMBER_ROLE --tenant_id $NEW_TENANT &>/dev/null
+if [ "$?" != "0" ]
+then
+    echo "ERROR: $0 failed to run keystone user-role-add"
+    exit 1
+fi
 
 credential_file="$HOME_DIR/.eucarc"
 touch $credential_file
@@ -60,7 +65,7 @@ touch $credential_file 2>/dev/null || /bin/true
 touch $credential_file 2>/dev/null || /bin/true
 touch $credential_file 2>/dev/null || /bin/true
 
-IDENTITY_URL=$(keystone catalog --service identity 2>/dev/null | awk '/ publicURL / { print $4 }')
+IDENTITY_URL=$(/usr/bin/keystone catalog --service identity 2>/dev/null | awk '/ publicURL / { print $4 }')
 
 echo "export OS_TENANT_NAME=$USERNAME" >> $credential_file
 echo "export OS_USERNAME=$USERNAME" >> $credential_file
@@ -72,9 +77,9 @@ echo "export OS_AUTH_URL=\"${IDENTITY_URL}/\"" >> $credential_file
 INFO_STRING="--os_username $USERNAME --os_password $PASSWORD --os_tenant_name $USERNAME"
 NOVA_INFO_STRING="--username $USERNAME --password $PASSWORD --tenant_name $USERNAME"
 
-CREDS=$(keystone $INFO_STRING ec2-credentials-create 2>/dev/null )
+CREDS=$(/usr/bin/keystone $INFO_STRING ec2-credentials-create 2>/dev/null )
 
-EC2_URL=$(keystone $INFO_STRING catalog --service ec2 2>/dev/null | awk '/ publicURL / { print $4 }')
+EC2_URL=$(/usr/bin/keystone $INFO_STRING catalog --service ec2 2>/dev/null | awk '/ publicURL / { print $4 }')
 
 EC2_ACCESS_KEY=$(echo "$CREDS" | awk '/ access / { print $4 }')
 

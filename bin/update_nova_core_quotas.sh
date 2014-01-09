@@ -24,7 +24,7 @@ then
     echo "Usage: $0 USERNAME cores"
 	exit 1
 fi
-tennant_id=$(keystone tenant-list 2>/dev/null | grep $USERNAME | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
+tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep $USERNAME | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
 ram=$((2048*$CORES))
 instances=${CORES}
 
