@@ -12,6 +12,7 @@ PASSWD=${3}
 HOME_DIR=${4}
 STORAGE_QUOTA=${5}
 DEFAULT_SHELL=/bin/bash
+UID_NUMBER=$(getent passwd $USERNAME | cut -f3 -d":" )
 
 #Pull in the ldap info
 if [ -e /etc/osdc_cloud_accounting/settings.sh ]
