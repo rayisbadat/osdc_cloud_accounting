@@ -36,8 +36,8 @@ add_samba_creds() {
     # This is inheriently unsecure. The mhash/nthash is the old easly broken one,
     # Ldap needs to be configured to not allow anonymous query of the passwords.
 
-    LM_PASSWORD=$(perl -e'use Crypt::SmbHash qw(lmhash nthash);' -e "print lmhash($PASSWD);" )
-    NT_PASSWORD=$(perl -e'use Crypt::SmbHash qw(lmhash nthash);' -e "print nthash($PASSWD);" )
+    LM_PASSWORD=$(perl -e'use Crypt::SmbHash qw(lmhash nthash);' -e "print lmhash('$PASSWD');" )
+    NT_PASSWORD=$(perl -e'use Crypt::SmbHash qw(lmhash nthash);' -e "print nthash('$PASSWD');" )
     SALT=$(pwgen 8 1)
     CRYPT_PASSWORD=$(perl -e "print crypt('$PASSWD', '\$6\$$SALT')" )
     SAMBA_SID=$ADC_SID-$((UID_NUM*2+1000))
