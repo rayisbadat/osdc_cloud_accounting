@@ -38,3 +38,4 @@ nova-manage account quota --project=${tennant_id} --key=cores --value=$CORES &>/
 nova-manage account quota --project=${tennant_id} --key=ram --value=$ram &>/dev/null
 nova-manage account quota --project=${tennant_id} --key=instances --value=$instances &>/dev/null
 nova-manage account quota --project=${tennant_id} --key=fixed_ips --value=$instances &>/dev/null
+nova-manage account quota --project=${tennant_id} --key=floating_ips --value=0 &>/dev/null
