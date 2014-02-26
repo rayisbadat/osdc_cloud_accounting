@@ -82,7 +82,7 @@ create_user() {
 }
 
 set_quota(){
-    gluster volume quota $GLUSTER_VOL limit-usage /users/${USERNAME} ${STORAGE_QUOTA} &>/dev/null
+    env gluster volume quota $GLUSTER_VOL limit-usage /users/${USERNAME} ${STORAGE_QUOTA} &>/dev/null
 }
 
 ##Actually run commands
