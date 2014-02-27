@@ -13,4 +13,4 @@ then
     exit 1
 fi
 
-ssh acctcreation@sullivan.opensciencedatacloud.org " ssh ubuntu@www.opensciencedatacloud.org  '/var/www/tukey/tukey-middleware/tools/with_venv.sh python /var/www/tukey/tukey-middleware/create_tukey_user.py $CLOUD $METHOD $EPPN $USERNAME $PASSWORD'" &>/dev/null
+ssh -i $ACCTCREATION_SSHKEY ubuntu@www.opensciencedatacloud.org "/var/www/tukey/tukey_middleware/tools/with_venv.sh python /var/www/tukey/tukey_middleware/tools/create_tukey_user.py  $CLOUD $METHOD $EPPN $USERNAME $PASSWORD" &>/dev/null
