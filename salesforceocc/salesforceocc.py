@@ -172,7 +172,7 @@ class SalesForceOCC:
                     'login_identifier': str(contact[self.objectNS.OpenID_Account__c]),
                 }
             except KeyError as e:
-                sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
+                sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list into contacts_dict:  %s\n" %(e) )
 
         return contacts_dict
 
@@ -275,7 +275,7 @@ class SalesForceOCC:
     def get_approved_users(self, campaign_name, contacts=None):
         """ Prints a csv of approved users in the format we use for new/disabled account processing"""
         if type(contacts) == None and self.contacts == None:
-            sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
+            sys.stderr.write("ERROR: KeyError trying to get approved users. \n")
             sys.exit(1)
         elif type(contacts) == None:
             contacts=self.contacts
@@ -303,10 +303,10 @@ class SalesForceOCC:
                     campaign_name,
                     contact['core_quota'],
                     contact['storage_quota'],
-                    contact['OpenID']
+                    contact['login_identifier']
                 )
             except KeyError as e:
-                sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list.  Do we only have 1 user in campagin ?\n")
+                sys.stderr.write("ERROR: KeyError trying to print approved user for csv  %s\n" %(e))
 
 
 
