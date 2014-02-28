@@ -1,5 +1,13 @@
 #!/bin/bash
 
+if [ -e /etc/osdc_cloud_accounting/settings.sh ]
+then
+    source  /etc/osdc_cloud_accounting/settings.sh
+else
+    echo "$0 Error: can not locate /etc/osdc_cloud_accounting/settings "
+    exit 1
+fi
+
 USERNAME=$1
 PASSWORD=$2
 EPPN=$3
