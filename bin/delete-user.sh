@@ -1,7 +1,7 @@
 #!/bin/bash
-CMD=${1}
-USERNAME=${2}
-CLOUD=${3}
+USERNAME=${1}
+CLOUD=${2}
+PURGE=${3}
 HOME_DIR=/glusterfs/users/$USERNAME
 RESERVEDNAMES=" adminUser ec2 nova glance swift "
 
@@ -93,11 +93,11 @@ remove_home_dir() {
     fi
 }
 remove_quota(){
-    ssh -t lacadmin@gluster-controller "sudo gluster volume quota $GLUSTER_VOL remove /users/$USERNAME" 2>/dev/null
+    gluster volume quota $GLUSTER_VOL remove /users/$USERNAME 2>/dev/null
 }
 
 remove_tukey_user() {
-    ssh ubuntu@www.opensciencedatacloud.org "/var/www/tukey/tukey-middleware/tools/with_venv.sh python /var/www/tukey/tukey-middleware/create_tukey_user.py -r $CLOUD $USERNAME" 2>/dev/null
+    ssh -i $ACCTCREATION_SSHKEY  ubuntu@www.opensciencedatacloud.org "/var/www/tukey/tukey_middleware/tools/with_venv.sh python /var/www/tukey/tukey_middleware/tools/create_tukey_user.py -r $CLOUD $USERNAME" 2>/dev/null
 
 }
 
