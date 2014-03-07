@@ -55,8 +55,8 @@ if __name__ == "__main__":
                 else:
                     method = 'shibboleth'
                 
-                #OpenIDs were the sart but now we need to check if anything
-                #is set for this email field, Email is now just contact field
+                #If we have an identifier use that, otherwise fallback to email
+                #This if proves that i Suck
                 if fields['login_identifier'] == 'None' or fields['login_identifier'] == None or not fields['login_identifier']:
                     login_identifier = fields['Email']
                 else:
