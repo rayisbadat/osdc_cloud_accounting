@@ -155,7 +155,7 @@ class SalesForceOCC:
             try:
                 contacts_dict[str(contact[userNS])] = {
                     'FirstName': str(contact[self.objectNS.FirstName]),
-                    'Account': str(accounts[str(contact[self.objectNS.AccountId])]),
+                    'Account': None,
                     'LastName': str(contact[self.objectNS.LastName]),
                     'Department': str(contact[self.objectNS.Department]),
                     'PI': str(contact[self.objectNS.Principal_Investigator__c]),
@@ -173,6 +173,12 @@ class SalesForceOCC:
                 }
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list into contacts_dict:  %s\n" %(e) )
+
+            #Issue #22, get_accounts not returning all the accounts.  Continuously skips one specific account.
+            try:
+                contacts_dict[str(contact[userNS])]['Account'] = str(accounts[str(contact[self.objectNS.AccountId])])
+            except:
+                pass
 
         return contacts_dict
 
