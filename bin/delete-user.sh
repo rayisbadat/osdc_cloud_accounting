@@ -21,6 +21,12 @@ else
     exit 1
 fi
 
+if [ -z "$USERNAME" ] || [ -z "$CLOUD" ] 
+then
+    echo "Usage: $0 USERNAME CLOUD [PURGE]"
+    exit 1 
+fi
+
 
 check_reserved() {
     if [[  "$RESERVEDNAMES" =~ "$USERNAME" ]]
