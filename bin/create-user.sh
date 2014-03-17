@@ -25,6 +25,7 @@ fi
 if [ $? -ne 0 ]
 then
 	echo "$0: create ldap user failed!"
+    echo /usr/local/sbin/create-ldap-user.sh "$NAME" "$USERNAME" "$PASSWD" "$HOME_DIR" "$STORAGE_QUOTA"
 	exit 1	
 fi
 
@@ -32,6 +33,7 @@ fi
 if [ $? -ne 0 ]
 then
 	echo "$0: create-cloud-user failed"
+    echo /usr/local/sbin/create-cloud-user.sh "$USERNAME" "$PASSWD" "$EMAIL" "$HOME_DIR" "$CORE_QUOTA"
     exit 1
 fi
 
@@ -39,6 +41,7 @@ fi
 if [ $? -ne 0 ]
 then
 	echo "$0: create-gui-creds failed"
+    echo /usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
     exit 1
 fi
 

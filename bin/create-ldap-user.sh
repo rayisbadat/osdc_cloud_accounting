@@ -72,6 +72,7 @@ create_user() {
     if [ "$?" -ne "0" ]
     then
 	    echo "$0 Error: cpu useradd failed"
+        echo /usr/sbin/cpu useradd -s${DEFAULT_SHELL} -Gsudo_apt -m $USERNAME
 	    exit 1
     fi
 
