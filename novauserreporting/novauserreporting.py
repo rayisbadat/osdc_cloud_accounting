@@ -135,7 +135,7 @@ class NovaUserReporting:
             return engine.connect()
 
         except SQLAlchemyError, e:
-            sys.stderr.write("Error %d: %s" % (e.args[0], e.args[1]))
+            sys.stderr.write("Error %s" % (e))
             sys.exit(1)
 
     def get_corehrs(self, user_id=None, tenant_id=None):
