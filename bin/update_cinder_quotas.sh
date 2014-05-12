@@ -38,18 +38,25 @@ while getopts ":t:v:g:s:" opt; do
     s)
         cinder quota-update --snapshots $OPTARG $tennant_id
       ;;
-    ?)
-      echo "Usage: $0 USERNAME -t TENANT [-v NUM_VOLUMES] [-g SIZE_IN_GB] [-s NUM_SNAPSHOTS]"
+    *)
+      echo ">> Usage: $0 -t TENANT [-v NUM_VOLUMES] [-g SIZE_IN_GB] [-s NUM_SNAPSHOTS]"
       exit 1
       ;;
     :)
       echo "Option -$OPTARG requires an argument." >&2
       exit 1
       ;;
+	
   esac
 done
 
-if [ $OPTIND -eq 2 ] && [ "$tennant_id" != "" ]
+if [ $OPTIND -eq 3 ] && [ "$tennant_id" != "" ]
 then 
 	cinder quota-show $tennant_id
+	exit 1
+fi
+if [ $OPTIND -lt 3 ]
+then
+      echo ">>>Usage: $0 -t TENANT [-v NUM_VOLUMES] [-g SIZE_IN_GB] [-s NUM_SNAPSHOTS]"
+      exit 1
 fi

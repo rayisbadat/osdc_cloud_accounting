@@ -13,7 +13,7 @@ then
 	exit 1
 fi
 
-EUCARC=//glusterfs/users/${USERNAME}/.eucarc
+EUCARC=/mnt/glusterfs/users/${USERNAME}/.eucarc
 
 MEMBER_ROLE=$(keystone role-list | perl -n -e 'm/\|\s+(\S+)\s+\|\s+memberRole\s\|/ && print $1')
 TENANT=$(perl -n -e 'm|OS_TENANT_NAME=(\S+)| && print "$1"' $EUCARC )
