@@ -18,8 +18,8 @@ else
     exit 1
 fi
 
-while getopts ":t:v:g:s:" opt; do
-  case ${opt} in
+while getopts "t:v:g:s:" opt; do
+  case "$opt" in
     t)
 	tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep $OPTARG | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
 
@@ -39,6 +39,7 @@ while getopts ":t:v:g:s:" opt; do
         cinder quota-update --snapshots $OPTARG $tennant_id
       ;;
     *)
+	echo "${opt}"
       echo ">> Usage: $0 -t TENANT [-v NUM_VOLUMES] [-g SIZE_IN_GB] [-s NUM_SNAPSHOTS]"
       exit 1
       ;;
@@ -50,10 +51,10 @@ while getopts ":t:v:g:s:" opt; do
   esac
 done
 
-if [ $OPTIND -eq 3 ] && [ "$tennant_id" != "" ]
+if [ "$tennant_id" != "" ]
 then 
 	cinder quota-show $tennant_id
-	exit 1
+	exit 0
 fi
 if [ $OPTIND -lt 3 ]
 then
