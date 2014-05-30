@@ -15,6 +15,7 @@ fi
 
 EUCARC=/mnt/glusterfs/users/${USERNAME}/.eucarc
 
+
 MEMBER_ROLE=$(keystone role-list | perl -n -e 'm/\|\s+(\S+)\s+\|\s+memberRole\s\|/ && print $1')
 TENANT=$(perl -n -e 'm|OS_TENANT_NAME=(\S+)| && print "$1"' $EUCARC )
 USERNAME=$(perl -n -e 'm|OS_USERNAME=(\S+)| && print "$1"' $EUCARC )
@@ -52,7 +53,7 @@ add_member_role() {
 
 create_novarc()
 {
-	grep OS_ $HOMEDIR/.eucarc | perl -p -e 's/bionimbus-pdc.opensciencedatacloud.org/api.bionimbus-pdcv2.opensciencedatacloud.org/;' -e 's/cloud-controller/api.bionimbus-pdcv2.opensciencedatacloud.org/;'  > $HOMEDIR/.novarc
+	grep OS_ $EUCARC | perl -p -e 's/bionimbus-pdc.opensciencedatacloud.org/api.bionimbus-pdcv2.opensciencedatacloud.org/;' -e 's/cloud-controller/api.bionimbus-pdcv2.opensciencedatacloud.org/;'  > $HOMEDIR/.novarc
 	chown $USERNAME $HOMEDIR/.novarc
 }
 

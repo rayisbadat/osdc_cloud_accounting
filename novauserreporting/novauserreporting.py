@@ -147,51 +147,16 @@ class NovaUserReporting:
                         deleted_at,
                         deleted,
                         id,
-                        internal_id,
                         user_id,
                         project_id,
-                        image_ref,
-                        kernel_id,
-                        ramdisk_id,
-                        server_name,
-                        launch_index,
-                        key_name,
-                        key_data,
-                        power_state,
-                        vm_state,
                         memory_mb,
                         vcpus,
-                        hostname,
-                        host,
-                        user_data,
-                        reservation_id,
                         scheduled_at,
                         launched_at,
                         terminated_at,
-                        display_name,
-                        display_description,
-                        availability_zone,
-                        locked,
-                        os_type,
-                        launched_on,
                         instance_type_id,
-                        vm_mode,
                         uuid,
-                        architecture,
-                        root_device_name,
-                        access_ip_v4,
-                        access_ip_v6,
-                        config_drive,
-                        task_state,
-                        default_ephemeral_device,
-                        default_swap_device,
-                        progress,
-                        auto_disk_config,
-                        shutdown_terminate,
-                        disable_terminate,
-                        root_gb,
-                        ephemeral_gb,
-                        cell_name
+                        task_state
 
                     from nova.instances where vm_state != 'error' and
                     (
@@ -228,8 +193,8 @@ class NovaUserReporting:
             conn = self.db_connect(self.settings['novadb'])
             s = text(query)
             results = conn.execute(s)
-        except SQLAlchemyError:
-            sys.stderr.write("ERROR-NUR: Erroring querying the databases\n")
+        except SQLAlchemyError as e:
+            sys.stderr.write("ERROR-NUR: Erroring querying the databases: %s\n" % (e) )
             sys.exit(1)
 
 
@@ -237,7 +202,7 @@ class NovaUserReporting:
         for row in results:
 
             try:
-                created_at = row[1].replace(tzinfo=timezone('UTC'))
+                created_at = row[0].replace(tzinfo=timezone('UTC'))
             except AttributeError:
                 created_at = None
 
@@ -252,27 +217,24 @@ class NovaUserReporting:
                 deleted_at = None
 
             deleted = int(row[3])
-            user_id = row[6]
-            project_id = row[7]
-            instance_type_id = int(row[32])
-            vcpus = int(row[18])
-
+            user_id = row[5]
+            project_id = row[6]
+            vcpus = int(row[8])
             try:
-                launched_at = row[24].replace(tzinfo=timezone('UTC'))
-            except AttributeError:
-                launched_at = None
-
-            try:
-                scheduled_at = row[23].replace(tzinfo=timezone('UTC'))
+                scheduled_at = row[9].replace(tzinfo=timezone('UTC'))
             except AttributeError:
                 scheduled_at = None
-
             try:
-                terminated_at = row[25].replace(tzinfo=timezone('UTC'))
+                launched_at = row[10].replace(tzinfo=timezone('UTC'))
+            except AttributeError:
+                launched_at = None
+            try:
+                terminated_at = row[11].replace(tzinfo=timezone('UTC'))
             except AttributeError:
                 terminated_at = None
-            uuid = row[34]
-            task_state = row[40]
+            instance_type_id = int(row[12])
+            uuid = row[13]
+            task_state = row[14]
 
             #Edge case for when VM started
             if launched_at is None:

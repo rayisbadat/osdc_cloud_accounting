@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from novauserreporting import NovaUserReporting
 import os
 import sys
