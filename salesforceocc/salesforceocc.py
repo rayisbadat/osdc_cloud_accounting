@@ -172,7 +172,7 @@ class SalesForceOCC:
                     'login_identifier': str(contact[self.objectNS.Authentication_ID__c]),
                 }
             except KeyError as e:
-                sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list into contacts_dict:  %s\n" %(e) )
+                sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list into contacts_dict:  %s\n" %(e.message) )
 
             #Issue #22, get_accounts not returning all the accounts.  Continuously skips one specific account.
             try:
