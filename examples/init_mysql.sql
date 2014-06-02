@@ -1,4 +1,5 @@
 CREATE DATABASE storage_use;
+USE storage_use;
 CREATE TABLE `PDCv2` (   `date` datetime DEFAULT NULL,   `path` text,   `value` float DEFAULT NULL );
 GRANT USAGE ON *.* TO '$REPORTING_USERNAME'@'%' IDENTIFIED BY '$PASSWORD';
 GRANT ALL PRIVILEGES ON `storage_use`.* TO '$REPORTING_USERNAME'@'%';

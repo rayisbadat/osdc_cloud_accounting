@@ -246,13 +246,13 @@ class NovaUserReporting:
                 better_launched_at = launched_at
 
             #Find the term time for a vm
-            if deleted == 1 and terminated_at is not None:
+            if deleted != 0 and terminated_at is not None:
                 better_terminated_at = terminated_at
-            elif deleted == 1 and deleted_at is not None:
+            elif deleted != 0 and deleted_at is not None:
                 better_terminated_at = deleted_at
-            elif deleted == 1 and updated_at is not None:
+            elif deleted != 0 and updated_at is not None:
                 better_terminated_at = updated_at
-            elif deleted == 1 and deleted_at is None:
+            elif deleted != 0 and deleted_at is None:
                 #Something Bad happened ignore this VM
                 better_terminated_at = better_launched_at
             elif deleted == 0 and deleted_at is not None:
@@ -382,6 +382,7 @@ class NovaUserReporting:
 
         #Loop through tenants
         for tenant in self.tenants:
+
             #Find users in a tenant
             tenant_users = tenant.list_users()
             for user in tenant_users:
@@ -390,13 +391,21 @@ class NovaUserReporting:
                 du = self.get_du(
                     path="%s" % (user.name),
                     start_date=self.start_time, end_date=self.cieling_time)
-                self.cloud_users[user.name] = UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du)
+                #self.cloud_users[user.name] = UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du)
+                self.cloud_users.setdefault(user.name, []).append( UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du) )
 
     def gen_csv(self):
         self.csv = []
         self.csv.extend(["User, Core Hours (H), Disk Usage (GB)"])
         for cloud_user, stats in self.cloud_users.items():
-            self.csv.extend(["%s,%s,%s" % (cloud_user, stats.corehrs, stats.du)])
+            #self.csv.extend(["%s,%s,%s" % (cloud_user, stats.corehrs, stats.du)])
+            #This is stupid but until we have better handling on multi tenant users, its kludged to work
+            du = stats[0].du
+            corehrs = 0
+            for per_tenant_corehrs in stats:
+                corehrs += per_tenant_corehrs.corehrs
+            self.csv.extend(["%s,%s,%s" % (cloud_user, corehrs, du)])
+
 
     def print_csv(self):
         #print "Tenant, User, Core Hours (H), Disk Usage (GB)"
@@ -453,6 +462,13 @@ class NovaUserReporting:
         for cloud_username, stats in self.cloud_users.items():
             contact_id = None
             case_id = None
+
+
+            #This is stupid but until we have better handling on multi tenant users, its kludged to work
+            du = stats[0].du
+            corehrs = 0
+            for per_tenant_corehrs in stats:
+                corehrs += per_tenant_corehrs.corehrs
             
             # Assume the username on cloud and SF match
             # If not we can try the slow way and query SF for a match
@@ -472,14 +488,14 @@ class NovaUserReporting:
                 except KeyError:
                     case_id = None
             
-                if ( stats.corehrs is None or stats.corehrs == 0 ) and ( stats.du is None or stats.du == 0):
+                if ( corehrs is None or corehrs == 0 ) and ( du is None or du == 0):
                     sys.stderr.write("INFO: User %s had no billable usage\n" %(cloud_username) )
                 else:
                     # Write to SalesForce
                     try:
                         saver_result = sf.create_invoice_task(
                             campaign=self.settings['cloud'], contact_id=contact_id,
-                            case_id=case_id, corehrs=stats.corehrs, du=stats.du,
+                            case_id=case_id, corehrs=corehrs, du=du,
                             start_date=self.start_time, end_date=self.end_time)
                         if case_id is None:
                             sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" % (cloud_username, saver_result))
