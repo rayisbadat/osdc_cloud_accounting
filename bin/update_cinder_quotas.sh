@@ -50,6 +50,13 @@ while getopts "t:v:g:s:" opt; do
 	
   esac
 done
+if [ $OPTIND -eq 1 ]; 
+then 
+    echo "No options were passed"; 
+    echo ">> Usage: $0 -t TENANT [-v NUM_VOLUMES] [-g SIZE_IN_GB] [-s NUM_SNAPSHOTS]"
+    exit 1
+fi
+
 
 if [ "$tennant_id" != "" ]
 then 
