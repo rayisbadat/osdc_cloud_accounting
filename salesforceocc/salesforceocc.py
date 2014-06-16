@@ -46,8 +46,8 @@ class SalesForceOCC:
 
     def get_case_id(self, campaign, contact_id):
         """ Given a ContactId and a Campaign find the case"""
-        query = """SELECT CaseNumber, Id 
-                FROM Case 
+        query = """SELECT CaseNumber, Id
+                FROM Case
                 WHERE ContactId ='%s' and ResourceName__c='%s'
                 """ % (contact_id, campaign)
 
@@ -60,15 +60,15 @@ class SalesForceOCC:
                 pass
 
     def get_contact_id_by_case_username(self, campaign, cloud_username):
-        """Pull the username assosiated with the cloud/campaign. 
+        """Pull the username assosiated with the cloud/campaign.
             Used as last resort to find the edge case where system
             and salesforce do not match"""
 
-        query = """SELECT ContactId 
-                FROM Case 
-                WHERE 
-                ResourceName__c='%s' 
-                and 
+        query = """SELECT ContactId
+                FROM Case
+                WHERE
+                ResourceName__c='%s'
+                and
                 Server_Username_Associated_with_Invoice__c='%s'
                 """ % (campaign, cloud_username)
 
@@ -84,7 +84,7 @@ class SalesForceOCC:
     def load_contactids_from_campaign(self, campaign_name, statuses=["Approved User"]):
         """ Load the MemberIds of the people in campaign """
         self.contact_ids = self.get_contactids_from_campaign(campaign_name=campaign_name, statuses=statuses)
-        
+
     def get_contactids_from_campaign(self, campaign_name, statuses=["Approved User"]):
         """ Get the MemberIds of the people in campaign """
         contact_ids = []
@@ -92,21 +92,21 @@ class SalesForceOCC:
         campaign_id = self.get_campaignid(campaign_name=campaign_name)
 
         #Get the list of campaign Members CampaignMember.ContactId=Contact.Id
-      
+
         for status in statuses:
-            query_contacts = """SELECT ContactId, Status 
-                FROM CampaignMember 
+            query_contacts = """SELECT ContactId, Status
+                FROM CampaignMember
                 WHERE campaignId ='%s' and status = '%s'
                 """ % (campaign_id, status)
             contacts = self.svc.query(query_contacts)
-    
+
             #Get the account mappings
             for contact in contacts:
                 try:
                     contact_ids.append(str(contact[self.objectNS.ContactId]))
                 except KeyError:
                     pass
-    
+
         return contact_ids
 
 
@@ -120,7 +120,7 @@ class SalesForceOCC:
         campaigns = self.svc.query(query_campaigns)
         campaign_id = str(campaigns[self.partnerNS.records:][0][self.objectNS.Id])
         return campaign_id
-        
+
 
     def load_contacts_from_campaign(self, campaign_name, statuses=["Approved User"]):
         """ Create a listing of what we need for each user in a campaign """
@@ -170,6 +170,7 @@ class SalesForceOCC:
                     'status': contact_statuses[str(contact[self.objectNS.Id])],
                     'Authentication_Method': str(contact[self.objectNS.Authentication_Method__c]),
                     'login_identifier': str(contact[self.objectNS.Authentication_ID__c]),
+                    'eRA_Commons_username': str(contact[self.objectNS.PDC_eRA_Commons__c]),
                 }
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list into contacts_dict:  %s\n" %(e.message) )
@@ -190,7 +191,7 @@ class SalesForceOCC:
 
         if campaign_id is None and campaign_name is not None:
             campaign_id = self.get_campaignid(campaign_name=campaign_name)
-        
+
         query_campaign_member_status = """SELECT CampaignId, ContactId, Status
             FROM CampaignMember
             WHERE CampaignId = '%s'
@@ -244,7 +245,7 @@ class SalesForceOCC:
                 pass
 
         return contacts_quota
-        
+
     def login(self, username="", password="", url="https://login.salesforce.com/services/Soap/u/28.0"):
         """Login to sales force to use their SOQL nonsense"""
         #I dont want to use .net and their shitty code explorer
@@ -313,6 +314,3 @@ class SalesForceOCC:
                 )
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to print approved user for csv  %s\n" %(e))
-
-
-
