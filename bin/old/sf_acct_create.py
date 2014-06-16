@@ -6,14 +6,16 @@ import sys
 import subprocess
 import getopt
 import pprint
+import csv
 
 if __name__ == "__main__":
 
     #Load in the CLI flags
     run = True
     printcsv = False
+    nih_file = False
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["print", "norun"])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["print", "norun", "nihfile="])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -22,6 +24,9 @@ if __name__ == "__main__":
             printcsv = True
         elif opt in ("--norun"):
             run = False
+        elif opt in ("--nihfile"):
+            nih_file = arg
+            nih_approved_users = {}
 
     sfocc = SalesForceOCC()
     #read in settings
@@ -43,9 +48,34 @@ if __name__ == "__main__":
     contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['general']['cloud'],  statuses=["Approved User", "Application Pending"])
     members_list = sfocc.get_approved_users(campaign_name=settings['general']['cloud'], contacts=contacts)
 
+    #Load up a nih style csv of approved users.
+    #user_name is the actual human name
+    #login is the name we care about.
+    #phsid is also important eventually
+    if nih_file:
+        try:
+            with open(nih_file, 'r') as handle:
+                reader = csv.DictReader(handle, ['user_name', 'login', 'authority', 'role', 'email', 'phone',' status', 'phsid', 'permission_set', 'created', 'updated', 'expires', 'downloader_for'])
+                for row in reader:
+                    nih_approved_users[row['login']] = row['phsid']
+        except NameError:
+            pass
+        except IOError as e:
+            sys.exit('file %s not found: %s' % (nih_file, e))
+        except csv.Error as e:
+            sys.exit('file %s, line %d: %s' % (filename, reader.line_num, e))
+    
+
     #Loop through list of members and run the bash scripts that will create the account
     #FIXME: Most of this stuff could be moved into the python, just simpler not to
     for username,fields in members_list.items():
+        #Nih style changes....i am doing this wrong
+        if nih_file:
+            if fields['eRA_Commons_username']  in nih_approved_users:
+                username = fields['eRA_Commons_username']
+            else:
+                continue
+            
         try:
             user_exists = pwd.getpwnam(username)
         except:
@@ -87,6 +117,7 @@ if __name__ == "__main__":
                         pprint.pprint(cmd)
                         pprint.pprint(fields)
                     if run:
+                        pass
                         result = subprocess.check_call( cmd )
                 except subprocess.CalledProcessError, e:
                     sys.stderr.write("Error creating  new user:  %s\n" % username )
