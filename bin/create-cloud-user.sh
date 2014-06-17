@@ -94,4 +94,4 @@ then
     nova $NOVA_INFO_STRING keypair-add --pub_key $HOME_DIR/.ssh/authorized_keys $USERNAME  &>/dev/null
 fi
 
-/usr/local/sbin/update_nova_core_quotas.sh $USERNAME $CORE_QUOTA 
+#/usr/local/sbin/update_nova_core_quotas.sh $USERNAME $CORE_QUOTA 
