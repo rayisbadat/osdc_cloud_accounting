@@ -48,8 +48,9 @@ then
     exit 1
 fi
 
-nova-manage account quota --project=${tennant_id} --key=cores --value=$CORES &>/dev/null
-nova-manage account quota --project=${tennant_id} --key=ram --value=$ram &>/dev/null
-nova-manage account quota --project=${tennant_id} --key=instances --value=$instances &>/dev/null
-nova-manage account quota --project=${tennant_id} --key=fixed_ips --value=$instances &>/dev/null
-nova-manage account quota --project=${tennant_id} --key=floating_ips --value=0 &>/dev/null
+
+nova quota-update  --cores $CORES $tennant_id &>/dev/null
+nova quota-update  --ram $ram $tennant_id &>/dev/null
+nova quota-update  --instances $instances $tennant_id &>/dev/null
+nova quota-update  --fixed_ips $instances $tennant_id &>/dev/null
+nova quota-update  --floating_ips 0 $tennant_id &>/dev/null
