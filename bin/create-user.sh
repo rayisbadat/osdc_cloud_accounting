@@ -3,7 +3,7 @@ NAME=${1}
 USERNAME=${2}
 EMAIL=${3}
 PASSWD=$(pwgen 20 1)
-HOME_DIR=/glusterfs/users/$USERNAME
+HOME_DIR=/home/$USERNAME
 METHOD=$4
 CLOUD=$5
 CORE_QUOTA=$6
@@ -38,10 +38,10 @@ then
 fi
 
 #/usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
-if [ $? -ne 0 ]
-then
-	echo "$0: create-gui-creds failed"
-    echo /usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
-    exit 1
-fi
+#if [ $? -ne 0 ]
+#then
+#	echo "$0: create-gui-creds failed"
+#    echo /usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
+#    exit 1
+#fi
 

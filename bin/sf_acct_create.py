@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     #Load in the CLI flags
     run = True
-    printcsv = False
+    printdebug = False
     nih_file = False
     try:
         opts, args = getopt.getopt(sys.argv[1:], "", ["print", "norun", "nihfile="])
@@ -21,7 +21,7 @@ if __name__ == "__main__":
         sys.exit(2)
     for opt, arg in opts:
         if opt in ("--print"):
-            printcsv = True
+            printdebug = True
         elif opt in ("--norun"):
             run = False
         elif opt in ("--nihfile"):
@@ -72,6 +72,7 @@ if __name__ == "__main__":
         #Nih style changes....i am doing this wrong
         if nih_file:
             if fields['eRA_Commons_username']  in nih_approved_users:
+                fields['username'] = fields['eRA_Commons_username']
                 username = fields['eRA_Commons_username']
             else:
                 continue
@@ -113,7 +114,7 @@ if __name__ == "__main__":
                     fields['storage_quota'] + 'TB',
                 ]
                 try:
-                    if printcsv:
+                    if printdebug:
                         pprint.pprint(cmd)
                         pprint.pprint(fields)
                     if run:

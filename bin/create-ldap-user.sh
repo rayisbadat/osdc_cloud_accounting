@@ -68,17 +68,18 @@ sambaAcctFlags: [UX]
     fi
 }
 create_user() {
-    /usr/sbin/cpu useradd -s${DEFAULT_SHELL} -Gsudo_apt -m $USERNAME  &>/dev/null
+    /usr/sbin/cpu useradd -s${DEFAULT_SHELL} -m $USERNAME  &>/dev/null
     if [ "$?" -ne "0" ]
     then
 	    echo "$0 Error: cpu useradd failed"
-        echo /usr/sbin/cpu useradd -s${DEFAULT_SHELL} -Gsudo_apt -m $USERNAME
+        echo /usr/sbin/cpu useradd -s${DEFAULT_SHELL} -m $USERNAME
 	    exit 1
     fi
 
     #create the user readable one
-    echo "username=$USERNAME" > $HOME_DIR/smbpassword.txt
-    echo "password=$PASSWD" >> $HOME_DIR/smbpassword.txt
+    #echo "username=$USERNAME" > $HOME_DIR/smbpassword.txt
+    #echo "password=$PASSWD" >> $HOME_DIR/smbpassword.txt
+
     chmod o-rwx $HOME_DIR &>/dev/null
 }
 
@@ -88,7 +89,7 @@ set_quota(){
 
 ##Actually run commands
 create_user
-set_quota
+#set_quota
 
 if [ -n "$ADC_SID" ]
 then
