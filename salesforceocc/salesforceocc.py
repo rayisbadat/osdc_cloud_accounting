@@ -164,21 +164,21 @@ class SalesForceOCC:
                     'Department': str(contact[self.objectNS.Department]),
                     'PI': str(contact[self.objectNS.Principal_Investigator__c]),
                     'Project': str(contact[self.objectNS.Project_Name_Description__c]),
-                    'username': str(contact[userNS]),
+                    'username': str(contact[userNS]) if str(contact[userNS])  !="" else None,
                     'Name': str(contact[self.objectNS.Name]),
                     'Email': str(contact[self.objectNS.Email]),
                     'Phone': str(contact[self.objectNS.Phone]),
-                    'id':  str(contact[self.objectNS.Id]),
+                    'id':  str(contact[self.objectNS.Id]) if str(contact[self.objectNS.Id])  !="" else None ,
                     'core_quota': contact_quotas_core[str(contact[self.objectNS.Id])],
                     'storage_quota': contact_quotas_storage[str(contact[self.objectNS.Id])],
                     'object_storage_quota': contact_quotas_object_storage[str(contact[self.objectNS.Id])],
                     'block_storage_quota': contact_quotas_block_storage[str(contact[self.objectNS.Id])],
                     'quota_leader': contact_quotas_leader[str(contact[self.objectNS.Id])],
                     'status': contact_statuses[str(contact[self.objectNS.Id])],
-                    'Authentication_Method': str(contact[self.objectNS.Authentication_Method__c]),
+                    'Authentication_Method': str(contact[self.objectNS.Authentication_Method__c]) if str(contact[self.objectNS.Authentication_Method__c]) !="" else None ,
                     'login_identifier': str(contact[self.objectNS.Authentication_ID__c]) if str(contact[self.objectNS.Authentication_ID__c]) !="" else None,
                     'eRA_Commons_username': str(contact[self.objectNS.PDC_eRA_Commons__c]),
-                    'tenant': str(contact_tenant[str(contact[self.objectNS.Id])]),
+                    'tenant': contact_tenant[str(contact[self.objectNS.Id])],
 
                 }
             except KeyError as e:
@@ -289,6 +289,8 @@ class SalesForceOCC:
                         contacts_field[contact_id]= True
                     elif contact_field == "false":
                         contacts_field[contact_id]= False
+                    elif contact_field == "" or contact_field == "None" or contact_field == None:
+                        contacts_field[contact_id]= None
                     elif str(contact_field).isdigit() == False:
                         contacts_field[contact_id]=contact_field
                     else:
