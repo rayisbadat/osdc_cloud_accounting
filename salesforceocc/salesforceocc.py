@@ -147,11 +147,12 @@ class SalesForceOCC:
         contacts = self.svc.retrieve(fields, "Contact", contact_ids)
         contacts_dict = {}
         contact_statuses = self.get_campaign_members_status(campaign_name=campaign_name)
-        contact_quotas_core = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='core')
-        contact_quotas_storage = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='storage')
-        contact_quotas_object_storage = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='object_storage')
-        contact_quotas_block_storage = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='block_storage')
-        contact_quotas_leader = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='leader')
+        contact_quotas_core = self.get_campaign_members_info(campaign_name=campaign_name,field='core')
+        contact_quotas_storage = self.get_campaign_members_info(campaign_name=campaign_name,field='storage')
+        contact_quotas_object_storage = self.get_campaign_members_info(campaign_name=campaign_name,field='object_storage')
+        contact_quotas_block_storage = self.get_campaign_members_info(campaign_name=campaign_name,field='block_storage')
+        contact_quotas_leader = self.get_campaign_members_info(campaign_name=campaign_name,field='leader')
+        contact_tenant = self.get_campaign_members_info(campaign_name=campaign_name,field='tenant')
 
         #Loop through and dict the results for latter processing
         for contact in contacts:
@@ -175,10 +176,11 @@ class SalesForceOCC:
                     'quota_leader': contact_quotas_leader[str(contact[self.objectNS.Id])],
                     'status': contact_statuses[str(contact[self.objectNS.Id])],
                     'Authentication_Method': str(contact[self.objectNS.Authentication_Method__c]),
-                    'login_identifier': str(contact[self.objectNS.Authentication_ID__c]),
+                    'login_identifier': str(contact[self.objectNS.Authentication_ID__c]) if str(contact[self.objectNS.Authentication_ID__c]) !="" else None,
                     'eRA_Commons_username': str(contact[self.objectNS.PDC_eRA_Commons__c]),
+                    'tenant': str(contact_tenant[str(contact[self.objectNS.Id])]),
+
                 }
-                pprint.pprint(contacts_dict[str(contact[userNS])])
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list into contacts_dict:  %s\n" %(e.message) )
 
@@ -215,7 +217,7 @@ class SalesForceOCC:
 
         return contact_statuses
 
-    def get_campaign_members_quotas(self, campaign_name=None, campaign_id=None, quota='core'):
+    def get_campaign_members_info(self, campaign_name=None, campaign_id=None, field=None):
         """ Get the Campaign member quotas for all users in Campaign.  
             We query SF for the quotas we request.  The user understandable
             core|storage|object_storage|block_storage|leader are mapped to
@@ -223,71 +225,80 @@ class SalesForceOCC:
             the old gluster vs new ceph quotas, a multiple is applied to get
             it into the correct units.  Salesforce is saving them as TB"""
 
-        contacts_quota = {}
+        contacts_field = {}
 
         if campaign_id is None and campaign_name is not None:
             campaign_id = self.get_campaignid(campaign_name=campaign_name)
 
-        if quota == 'core':
-            query_campaign_members_quota = """SELECT ContactId, Core_Quota__c
+        if field == 'core':
+            query_campaign_members_field = """SELECT ContactId, Core_Quota__c
                 FROM CampaignMember
                 WHERE CampaignId = '%s'
                 """ % (campaign_id)
-            quota_indexer = self.objectNS.Core_Quota__c
+            field_indexer = self.objectNS.Core_Quota__c
             multiplier = 1
-        elif quota == 'storage':
-            query_campaign_members_quota = """SELECT ContactId, Storage_Quota__c
+        elif field == 'storage':
+            query_campaign_members_field = """SELECT ContactId, Storage_Quota__c
                 FROM CampaignMember
                 WHERE CampaignId = '%s'
                 """ % (campaign_id)
-            quota_indexer = self.objectNS.Storage_Quota__c
+            field_indexer = self.objectNS.Storage_Quota__c
             multiplier = 1
-        elif quota == 'block_storage':
-            query_campaign_members_quota = """SELECT ContactId, Block_Storage_Quota__c
+        elif field == 'block_storage':
+            query_campaign_members_field = """SELECT ContactId, Block_Storage_Quota__c
                 FROM CampaignMember
                 WHERE CampaignId = '%s'
                 """ % (campaign_id)
-            quota_indexer = self.objectNS.Block_Storage_Quota__c
-            #ceph wants quotas in bytes
+            field_indexer = self.objectNS.Block_Storage_Quota__c
+            #ceph wants fields in bytes
             multiplier = 2**40
-        elif quota == 'object_storage':
-            query_campaign_members_quota = """SELECT ContactId, Object_Storage_Quota__c
+        elif field == 'object_storage':
+            query_campaign_members_field = """SELECT ContactId, Object_Storage_Quota__c
                 FROM CampaignMember
                 WHERE CampaignId = '%s'
                 """ % (campaign_id)
-            quota_indexer = self.objectNS.Object_Storage_Quota__c
-            #cinder quotas want in GB
+            field_indexer = self.objectNS.Object_Storage_Quota__c
+            #cinder fields want in GB
             multiplier = 1024
-        elif quota == 'leader':
-            query_campaign_members_quota = """SELECT ContactId, Leader_Set_Quotas__c
+        elif field == 'leader':
+            query_campaign_members_field = """SELECT ContactId, Leader_Set_Quotas__c
                 FROM CampaignMember
                 WHERE CampaignId = '%s'
                 """ % (campaign_id)
             multiplier = 1
-            quota_indexer = self.objectNS.Leader_Set_Quotas__c
+            field_indexer = self.objectNS.Leader_Set_Quotas__c
+        elif field == 'tenant':
+            query_campaign_members_field = """SELECT ContactId, Tenant_Group__c
+                FROM CampaignMember
+                WHERE CampaignId = '%s'
+                """ % (campaign_id)
+            multiplier = 1
+            field_indexer = self.objectNS.Tenant_Group__c
+
         else:
             raise KeyError("No core or storage quota provided")
 
-        campaign_members_quota = self.svc.query(query_campaign_members_quota)
+        campaign_members_field = self.svc.query(query_campaign_members_field)
 
-        for campaign_member_quota in campaign_members_quota:
+        for campaign_member_field in campaign_members_field:
             try:
-                contact_id = str(campaign_member_quota[self.objectNS.ContactId])
-                contact_quota = str(campaign_member_quota[quota_indexer])
-                if contact_quota:
-                    pprint.pprint(contact_id)
-                    if contact_quota == "true":
-                        contacts_quota[contact_id]= True
-                    elif contact_quota == "false":
-                        contacts_quota[contact_id]= False
+                contact_id = str(campaign_member_field[self.objectNS.ContactId])
+                contact_field = str(campaign_member_field[field_indexer])
+                if contact_field:
+                    if contact_field == "true":
+                        contacts_field[contact_id]= True
+                    elif contact_field == "false":
+                        contacts_field[contact_id]= False
+                    elif str(contact_field).isdigit() == False:
+                        contacts_field[contact_id]=contact_field
                     else:
-                        contacts_quota[contact_id] = int( float(contact_quota) * multiplier )
+                        contacts_field[contact_id] = int( float(contact_field) * multiplier )
                 else:
-                    contacts_quota[contact_id] = None
+                    contacts_field[contact_id] = None
             except KeyError:
                 pass
 
-        return contacts_quota
+        return contacts_field
 
     def login(self, username="", password="", url="https://login.salesforce.com/services/Soap/u/28.0"):
         """Login to sales force to use their SOQL nonsense"""
