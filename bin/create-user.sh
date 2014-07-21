@@ -37,11 +37,11 @@ then
     exit 1
 fi
 
-#/usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
-#if [ $? -ne 0 ]
-#then
-#	echo "$0: create-gui-creds failed"
-#    echo /usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
-#    exit 1
-#fi
+/usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
+if [ $? -ne 0 ]
+then
+	echo "$0: create-gui-creds failed"
+    echo /usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
+    exit 1
+fi
 

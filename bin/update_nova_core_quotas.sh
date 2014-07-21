@@ -26,6 +26,8 @@ then
 fi
 tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep $USERNAME | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
 
+echo "RAY $tennant_id"
+
 if [ "$tennant_id" == "" ]
 then
     echo "$0 Error: No user/tennant found for $USERNAME"
@@ -39,7 +41,7 @@ then
     exit 0
 fi
 
-ram=$((2048*$CORES))
+ram=$((3*1024*$CORES))
 instances=${CORES}
 
 if [ "$tennant_id" == "" ]
@@ -49,8 +51,7 @@ then
 fi
 
 
-nova quota-update  --cores $CORES $tennant_id &>/dev/null
-nova quota-update  --ram $ram $tennant_id &>/dev/null
-nova quota-update  --instances $instances $tennant_id &>/dev/null
-nova quota-update  --fixed_ips $instances $tennant_id &>/dev/null
-nova quota-update  --floating_ips 0 $tennant_id &>/dev/null
+nova quota-update  --cores $CORES $tennant_id # &>/dev/null
+nova quota-update  --ram $ram $tennant_id # &>/dev/null
+nova quota-update  --instances $instances $tennant_id # &>/dev/null
+nova quota-update  --fixed-ips $instances $tennant_id # &>/dev/null

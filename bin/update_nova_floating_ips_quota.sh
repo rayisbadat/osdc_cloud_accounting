@@ -40,4 +40,4 @@ then
     exit 0
 fi
 
-nova-manage account quota --project=${tennant_id} --key=floating_ips --value=$IPS #&>/dev/null
+nova quota-update  --floating_ips $IPS  ${tennant_id} #&>/dev/null

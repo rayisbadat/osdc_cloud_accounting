@@ -28,6 +28,8 @@ then
     exit 1
 fi
 
+echo "RAY>> GOT MEMBERID" 
+
 USERNAME=$1
 PASSWORD=$2
 EMAIL=$3
@@ -72,6 +74,7 @@ echo "export OS_USERNAME=$USERNAME" >> $credential_file
 echo "export OS_PASSWORD=$PASSWORD" >> $credential_file
 echo "export OS_AUTH_URL=\"${IDENTITY_URL}/\"" >> $credential_file
 
+echo "RAY>> Created Cred File" 
 #EUCA
 
 INFO_STRING="--os_username $USERNAME --os_password $PASSWORD --os_tenant_name $USERNAME"
@@ -89,9 +92,14 @@ echo "export EC2_URL=$EC2_URL" >> $credential_file
 echo "export EC2_ACCESS_KEY=$EC2_ACCESS_KEY" >> $credential_file
 echo "export EC2_SECRET_KEY=$EC2_SECRET_KEY" >> $credential_file
 
+echo "RAY>> Created EUCA keys" 
+
 if [ -e $HOME_DIR/.ssh/authorized_keys ]
 then
     nova $NOVA_INFO_STRING keypair-add --pub_key $HOME_DIR/.ssh/authorized_keys $USERNAME  &>/dev/null
+echo "RAY>> added an existing key to  nova key-pair" 
 fi
 
+echo "RAY  /usr/local/sbin/update_nova_core_quotas.sh $USERNAME $CORE_QUOTA "
 /usr/local/sbin/update_nova_core_quotas.sh $USERNAME $CORE_QUOTA 
+

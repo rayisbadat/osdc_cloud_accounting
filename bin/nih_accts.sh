@@ -23,7 +23,7 @@ create_users(){
     if [[ $(wc -l $compiled_output_file | cut -f1 -d " " ) > 0 ]]
     then
 	source /usr/local/src/.SFACCT/bin/activate
-	/usr/local/src/osdc_cloud_accounting/bin/sf_acct_create.py --print --nihfile $compiled_output_file
+	/usr/local/src/osdc_cloud_accounting/bin/sf_acct_create.py --print --nihfile $compiled_output_file 
     fi
 }
 disable_users(){
