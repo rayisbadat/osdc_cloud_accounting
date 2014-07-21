@@ -149,6 +149,9 @@ class SalesForceOCC:
         contact_statuses = self.get_campaign_members_status(campaign_name=campaign_name)
         contact_quotas_core = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='core')
         contact_quotas_storage = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='storage')
+        contact_quotas_object_storage = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='object_storage')
+        contact_quotas_block_storage = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='block_storage')
+        contact_quotas_leader = self.get_campaign_members_quotas(campaign_name=campaign_name,quota='leader')
 
         #Loop through and dict the results for latter processing
         for contact in contacts:
@@ -165,13 +168,17 @@ class SalesForceOCC:
                     'Email': str(contact[self.objectNS.Email]),
                     'Phone': str(contact[self.objectNS.Phone]),
                     'id':  str(contact[self.objectNS.Id]),
-                    'core_quota': str(contact_quotas_core[str(contact[self.objectNS.Id])]),
-                    'storage_quota': str(contact_quotas_storage[str(contact[self.objectNS.Id])]),
+                    'core_quota': contact_quotas_core[str(contact[self.objectNS.Id])],
+                    'storage_quota': contact_quotas_storage[str(contact[self.objectNS.Id])],
+                    'object_storage_quota': contact_quotas_object_storage[str(contact[self.objectNS.Id])],
+                    'block_storage_quota': contact_quotas_block_storage[str(contact[self.objectNS.Id])],
+                    'quota_leader': contact_quotas_leader[str(contact[self.objectNS.Id])],
                     'status': contact_statuses[str(contact[self.objectNS.Id])],
                     'Authentication_Method': str(contact[self.objectNS.Authentication_Method__c]),
                     'login_identifier': str(contact[self.objectNS.Authentication_ID__c]),
                     'eRA_Commons_username': str(contact[self.objectNS.PDC_eRA_Commons__c]),
                 }
+                pprint.pprint(contacts_dict[str(contact[userNS])])
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list into contacts_dict:  %s\n" %(e.message) )
 
@@ -209,7 +216,12 @@ class SalesForceOCC:
         return contact_statuses
 
     def get_campaign_members_quotas(self, campaign_name=None, campaign_id=None, quota='core'):
-        """ Get the Campaign member quotas for all users in Campaign """
+        """ Get the Campaign member quotas for all users in Campaign.  
+            We query SF for the quotas we request.  The user understandable
+            core|storage|object_storage|block_storage|leader are mapped to
+            the values in salesforce.  Do to variance in how we report/store
+            the old gluster vs new ceph quotas, a multiple is applied to get
+            it into the correct units.  Salesforce is saving them as TB"""
 
         contacts_quota = {}
 
@@ -222,12 +234,37 @@ class SalesForceOCC:
                 WHERE CampaignId = '%s'
                 """ % (campaign_id)
             quota_indexer = self.objectNS.Core_Quota__c
+            multiplier = 1
         elif quota == 'storage':
             query_campaign_members_quota = """SELECT ContactId, Storage_Quota__c
                 FROM CampaignMember
                 WHERE CampaignId = '%s'
                 """ % (campaign_id)
             quota_indexer = self.objectNS.Storage_Quota__c
+            multiplier = 1
+        elif quota == 'block_storage':
+            query_campaign_members_quota = """SELECT ContactId, Block_Storage_Quota__c
+                FROM CampaignMember
+                WHERE CampaignId = '%s'
+                """ % (campaign_id)
+            quota_indexer = self.objectNS.Block_Storage_Quota__c
+            #ceph wants quotas in bytes
+            multiplier = 2**40
+        elif quota == 'object_storage':
+            query_campaign_members_quota = """SELECT ContactId, Object_Storage_Quota__c
+                FROM CampaignMember
+                WHERE CampaignId = '%s'
+                """ % (campaign_id)
+            quota_indexer = self.objectNS.Object_Storage_Quota__c
+            #cinder quotas want in GB
+            multiplier = 1024
+        elif quota == 'leader':
+            query_campaign_members_quota = """SELECT ContactId, Leader_Set_Quotas__c
+                FROM CampaignMember
+                WHERE CampaignId = '%s'
+                """ % (campaign_id)
+            multiplier = 1
+            quota_indexer = self.objectNS.Leader_Set_Quotas__c
         else:
             raise KeyError("No core or storage quota provided")
 
@@ -238,7 +275,13 @@ class SalesForceOCC:
                 contact_id = str(campaign_member_quota[self.objectNS.ContactId])
                 contact_quota = str(campaign_member_quota[quota_indexer])
                 if contact_quota:
-                    contacts_quota[contact_id] = int(float(contact_quota))
+                    pprint.pprint(contact_id)
+                    if contact_quota == "true":
+                        contacts_quota[contact_id]= True
+                    elif contact_quota == "false":
+                        contacts_quota[contact_id]= False
+                    else:
+                        contacts_quota[contact_id] = int( float(contact_quota) * multiplier )
                 else:
                     contacts_quota[contact_id] = None
             except KeyError:
