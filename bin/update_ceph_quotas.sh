@@ -1,10 +1,9 @@
 #!/bin/bash
 
-touch_initial_file(){
+touch_initial_file() {
     #Cant set quota till after first upload
-    tenant_home=$(getent passwd $TENANT | cut -d":" -f6)
-    (cd $tenant_home; source .novarc; cd /tmp; echo $DISK_QUOTA > .quota; swift upload quota .quota &> /dev/null ; swift delete quota &> /dev/null )
-
+    user_home=$(getent passwd $USERNAME | cut -d":" -f6)
+    (cd $user_home; source .novarc; cd /tmp; echo $DISK_QUOTA > .quota; swift upload quota .quota &> /dev/null ; swift delete quota &> /dev/null )
 }
 
 set_quota() {
@@ -43,13 +42,14 @@ else
     exit 1
 fi
 
-TENANT=${1}
-DISK_QUOTA=${2}
+USERNAME=${1}
+TENANT=${2}
+DISK_QUOTA=${3}
 
-if [ -z "$TENANT" ]
+if [ "$TENANT" == "" ] || [ "$DISK_QUOTA" == "" ] || [ "$USERNAME" == "" ]
 then
     echo "Usage: $0 USERNAME/TENANT Disk_Quota_In_Bytes"
-    echo "If ~{USERNAME|TENANT}/.novarc doesnt exist or no file has ever been upload quota will fail.  'su -'  to a valid user, and then `swift upload .quota`"
+    #echo "User and Tenant must exist before hand"
     exit 1
 fi
 
@@ -60,8 +60,6 @@ then
     echo "$0 Error: No user/tennant found for $TENANT"
     exit 1
 fi
-
-
 
 touch_initial_file
 set_quota

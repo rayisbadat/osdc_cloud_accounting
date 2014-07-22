@@ -30,13 +30,13 @@ while getopts "t:v:g:s:" opt; do
 	fi
 	;;
     v)
-        cinder quota-update --volumes $OPTARG $tennant_id
+        cinder quota-update --volumes $OPTARG $tennant_id &> /dev/null
       ;;
     g)
-        cinder quota-update --gigabytes $OPTARG $tennant_id
+        cinder quota-update --gigabytes $OPTARG $tennant_id &> /dev/null
       ;;
     s)
-        cinder quota-update --snapshots $OPTARG $tennant_id
+        cinder quota-update --snapshots $OPTARG $tennant_id &> /dev/null
       ;;
     *)
 	echo "${opt}"

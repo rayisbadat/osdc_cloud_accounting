@@ -28,14 +28,12 @@ then
     exit 1
 fi
 
-echo "RAY>> GOT MEMBERID" 
-
 USERNAME=$1
-PASSWORD=$2
-EMAIL=$3
-HOME_DIR=$4
-CORE_QUOTA=$5
-if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$EMAIL" ] || [ -z "$HOME_DIR" ] || [ -z "$CORE_QUOTA" ]
+TENANT=$2
+PASSWORD=$3
+EMAIL=$4
+HOME_DIR=$5
+if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$EMAIL" ] || [ -z "$HOME_DIR" ] || [ -z "$TENANT" ]
 then
 	echo "Usage: $0 Username Password Email Home_Directory_Path STORAGE_QUOTA"
 	exit 1
@@ -45,7 +43,7 @@ function get_id () {
     echo `$@ | awk '/ id / { print $4 }'`
 }
 
-NEW_TENANT=$(get_id /usr/bin/keystone tenant-create --name=$USERNAME 2>/dev/null)
+NEW_TENANT=$(keystone tenant-get $TENANT 2>/dev/null | grep id | tr -s " " | cut -d" " -f4)
 
 NEW_USER=$(get_id /usr/bin/keystone user-create --name=$USERNAME \
                                         --pass="$PASSWORD" \
@@ -62,11 +60,6 @@ fi
 credential_file="$HOME_DIR/.novarc"
 touch $credential_file
 
-#This stupidity is needed to avoid a glusterfs race condition where its still propagating files
-#touch $credential_file 2>/dev/null || /bin/true
-#touch $credential_file 2>/dev/null || /bin/true
-#touch $credential_file 2>/dev/null || /bin/true
-
 IDENTITY_URL=$(/usr/bin/keystone catalog --service identity 2>/dev/null | awk '/ publicURL / { print $4 }')
 
 echo "export OS_TENANT_NAME=$USERNAME" >> $credential_file
@@ -74,7 +67,6 @@ echo "export OS_USERNAME=$USERNAME" >> $credential_file
 echo "export OS_PASSWORD=$PASSWORD" >> $credential_file
 echo "export OS_AUTH_URL=\"${IDENTITY_URL}/\"" >> $credential_file
 
-echo "RAY>> Created Cred File" 
 #EUCA
 
 INFO_STRING="--os_username $USERNAME --os_password $PASSWORD --os_tenant_name $USERNAME"
@@ -91,15 +83,4 @@ EC2_SECRET_KEY=$(echo "$CREDS" | awk '/ secret / { print $4 }')
 echo "export EC2_URL=$EC2_URL" >> $credential_file
 echo "export EC2_ACCESS_KEY=$EC2_ACCESS_KEY" >> $credential_file
 echo "export EC2_SECRET_KEY=$EC2_SECRET_KEY" >> $credential_file
-
-echo "RAY>> Created EUCA keys" 
-
-if [ -e $HOME_DIR/.ssh/authorized_keys ]
-then
-    nova $NOVA_INFO_STRING keypair-add --pub_key $HOME_DIR/.ssh/authorized_keys $USERNAME  &>/dev/null
-echo "RAY>> added an existing key to  nova key-pair" 
-fi
-
-echo "RAY  /usr/local/sbin/update_nova_core_quotas.sh $USERNAME $CORE_QUOTA "
-/usr/local/sbin/update_nova_core_quotas.sh $USERNAME $CORE_QUOTA 
 

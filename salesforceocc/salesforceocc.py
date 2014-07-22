@@ -2,6 +2,7 @@
 import beatbox
 import sys
 import pprint
+import re
 
 
 class SalesForceOCC:
@@ -157,14 +158,24 @@ class SalesForceOCC:
         #Loop through and dict the results for latter processing
         for contact in contacts:
             try:
-                contacts_dict[str(contact[userNS])] = {
+                if not str(contact[userNS]):
+                    username = ("%s%s"%(str(contact[self.objectNS.FirstName]), str(contact[self.objectNS.LastName]) )).lower()
+                    #print "INFO: Autogenerating username %s" % username
+                else:
+                    username = str(contact[userNS])
+
+            except KeyError as e:
+                sys.stderr.write("ERROR: KeyError trying to determine username:  %s\n" %(e.message) )
+               
+            try: 
+                contacts_dict[username] = {
                     'FirstName': str(contact[self.objectNS.FirstName]),
                     'Account': None,
                     'LastName': str(contact[self.objectNS.LastName]),
                     'Department': str(contact[self.objectNS.Department]),
                     'PI': str(contact[self.objectNS.Principal_Investigator__c]),
                     'Project': str(contact[self.objectNS.Project_Name_Description__c]),
-                    'username': str(contact[userNS]) if str(contact[userNS])  !="" else None,
+                    'username': username,
                     'Name': str(contact[self.objectNS.Name]),
                     'Email': str(contact[self.objectNS.Email]),
                     'Phone': str(contact[self.objectNS.Phone]),
@@ -181,8 +192,11 @@ class SalesForceOCC:
                     'tenant': contact_tenant[str(contact[self.objectNS.Id])],
 
                 }
+                    
             except KeyError as e:
                 sys.stderr.write("ERROR: KeyError trying to pull user info from campagin list into contacts_dict:  %s\n" %(e.message) )
+            except Exception as e:
+                sys.stderr.write("ERROR: Wierd error trying to pull user info from campagin list into contacts_dict:  %s\n" %(e.message) )
 
             #Issue #22, get_accounts not returning all the accounts.  Continuously skips one specific account.
             try:
@@ -285,16 +299,16 @@ class SalesForceOCC:
                 contact_id = str(campaign_member_field[self.objectNS.ContactId])
                 contact_field = str(campaign_member_field[field_indexer])
                 if contact_field:
-                    if contact_field == "true":
+                    if contact_field == "true" or contact_field == True:
                         contacts_field[contact_id]= True
-                    elif contact_field == "false":
+                    elif contact_field == "false" or contact_field == False:
                         contacts_field[contact_id]= False
                     elif contact_field == "" or contact_field == "None" or contact_field == None:
                         contacts_field[contact_id]= None
-                    elif str(contact_field).isdigit() == False:
-                        contacts_field[contact_id]=contact_field
+                    elif re.match("^\d+?\.\d+?$", contact_field):
+                            contacts_field[contact_id] = int( float(contact_field) * multiplier )
                     else:
-                        contacts_field[contact_id] = int( float(contact_field) * multiplier )
+                        contacts_field[contact_id]=contact_field
                 else:
                     contacts_field[contact_id] = None
             except KeyError:

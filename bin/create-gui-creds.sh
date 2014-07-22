@@ -4,7 +4,7 @@ if [ -e /etc/osdc_cloud_accounting/settings.sh ]
 then
     source  /etc/osdc_cloud_accounting/settings.sh
 else
-    echo "$0 Error: can not locate /etc/osdc_cloud_accounting/settings "
+    echo "$0 Error: can not locate /etc/osdc_cloud_accounting/settings.sh "
     exit 1
 fi
 
@@ -21,5 +21,4 @@ then
     exit 1
 fi
 
-#echo ssh -i $ACCTCREATION_SSHKEY ubuntu@www.opensciencedatacloud.org "/var/www/tukey/tukey_middleware/tools/with_venv.sh python /var/www/tukey/tukey_middleware/tools/create_tukey_user.py  $CLOUD $METHOD $EPPN $USERNAME $PASSWORD" # &>/dev/null
 /var/www/tukey/tukey_middleware/tools/with_venv.sh python /var/www/tukey/tukey_middleware/tools/create_tukey_user.py  $CLOUD $METHOD $EPPN $USERNAME $PASSWORD # &>/dev/null
