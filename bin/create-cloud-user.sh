@@ -62,7 +62,7 @@ touch $credential_file
 
 IDENTITY_URL=$(/usr/bin/keystone catalog --service identity 2>/dev/null | awk '/ publicURL / { print $4 }')
 
-echo "export OS_TENANT_NAME=$USERNAME" >> $credential_file
+echo "export OS_TENANT_NAME=$TENANT" >> $credential_file
 echo "export OS_USERNAME=$USERNAME" >> $credential_file
 echo "export OS_PASSWORD=$PASSWORD" >> $credential_file
 echo "export OS_AUTH_URL=\"${IDENTITY_URL}/\"" >> $credential_file
