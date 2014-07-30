@@ -23,6 +23,8 @@ set_quota() {
         echo "ERROR: Could not enable quota on $TENANT"
         exit 1
     fi
+
+    radosgw-admin user stats --uid=$tenant_id --sync-stats &>/dev/null
 }
 
 

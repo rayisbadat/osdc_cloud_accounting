@@ -9,9 +9,9 @@ METHOD=$5
 CLOUD=$6
 
 #Check that we have the required number of params
-if   [ -z "$NAME" ]  ||  [ -z "$USERNAME" ] || [ -z "$PASSWD" ] || [ -z "$EMAIL" ] || [ -z "$METHOD" ] || [ -z "$CLOUD" ]
+if   [ -z "$NAME" ]  ||  [ -z "$USERNAME" ] || [ -z "$PASSWD" ] || [ -z "$EMAIL" ] || [ -z "$METHOD" ] || [ -z "$CLOUD" ] || [ -z "$TENANT" ]
 then
-	echo "Usage: $0 ACTUAL_NAME USER_NAME EMAIL METHOD CLOUD "
+	echo "Usage: $0 ACTUAL_NAME USER_NAME TENANT EMAIL METHOD CLOUD "
 	echo "Please be sure the group already exists in ldap"
     echo "METHOD: shibboleth, era, openid"
     echo "CLOUD: sullivan, atwood, adler, goldberg, tcga"
