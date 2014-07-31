@@ -161,6 +161,8 @@ if __name__ == "__main__":
                 reader = csv.DictReader(handle, ['user_name', 'login', 'authority', 'role', 'email', 'phone',' status', 'phsid', 'permission_set', 'created', 'updated', 'expires', 'downloader_for'])
                 for row in reader:
                     nih_approved_users[row['login'].upper()] = row['phsid']
+                    if printdebug:
+                        pprint.pprint( nih_approved_users[row['login'].upper()]  )
         except NameError:
             pass
         except IOError as e:
