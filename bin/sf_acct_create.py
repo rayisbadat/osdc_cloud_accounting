@@ -117,7 +117,7 @@ if __name__ == "__main__":
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
     for opt, arg in opts:
-        if opt in ("--print"):
+        if opt in ("--debug"):
             printdebug = True
         elif opt in ("--norun"):
             run = False
