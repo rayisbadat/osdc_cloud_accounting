@@ -112,7 +112,7 @@ if __name__ == "__main__":
     printdebug = False
     nih_file = False
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["print", "norun", "nihfile="])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile="])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
