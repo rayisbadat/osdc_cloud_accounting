@@ -458,7 +458,7 @@ class NovaUserReporting:
         """ Take list of users on cloud, push as many as you can to SF """
         sf = SalesForceOCC()
         sf.login(username=self.settings['sfusername'], password=self.settings['sfpassword'], url=self.settings['sfurl'])
-        sf.load_contacts_from_campaign(campaign_name=self.settings['cloud'])
+        sf.load_contacts_from_campaign(campaign_name=self.settings['campaign'])
         for cloud_username, stats in self.cloud_users.items():
             contact_id = None
             case_id = None
@@ -476,7 +476,7 @@ class NovaUserReporting:
                 contact_id = sf.contacts[cloud_username]['id']
             except KeyError:
                 try:
-                    contact_id = sf.get_contact_id_by_case_username(campaign=self.settings['cloud'], cloud_username=cloud_username)
+                    contact_id = sf.get_contact_id_by_case_username(campaign=self.settings['campaign'], cloud_username=cloud_username)
                 except KeyError:
                     contact_id = None
 
@@ -484,7 +484,7 @@ class NovaUserReporting:
             if contact_id is not None:
                 # We prefer having a case, but can get away witout it
                 try:
-                    case_id = sf.get_case_id(campaign=self.settings['cloud'], contact_id=contact_id)
+                    case_id = sf.get_case_id(campaign=self.settings['campaign'], contact_id=contact_id)
                 except KeyError:
                     case_id = None
             
@@ -494,7 +494,7 @@ class NovaUserReporting:
                     # Write to SalesForce
                     try:
                         saver_result = sf.create_invoice_task(
-                            campaign=self.settings['cloud'], contact_id=contact_id,
+                            campaign=self.settings['campaign'], contact_id=contact_id,
                             case_id=case_id, corehrs=corehrs, du=du,
                             start_date=self.start_time, end_date=self.end_time)
                         if case_id is None:
