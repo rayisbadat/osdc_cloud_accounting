@@ -17,7 +17,7 @@ if [ -e /etc/osdc_cloud_accounting/settings.sh ]
 then
     source  /etc/osdc_cloud_accounting/settings.sh
 else
-    echo "$0 Error: can not locate /etc/osdc_cloud_accounting/settings "
+    echo "$0 Error: can not locate /etc/osdc_cloud_accounting/settings.sh "
     exit 1
 fi
 

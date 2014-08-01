@@ -103,6 +103,40 @@ def set_quota(username, tenant, quota_type, quota_value, printdebug=None,run=Non
         sys.stderr.write("%s\n" % e.output)
         return False
 
+
+def lock_unapproved_users(approved_members=None, starting_uid=1500, printdebug=None):
+    for p in pwd.getpwall():
+        if printdebug:
+            print "DEBUG: User on System %s:%s"%(p.pw_name,p.pw_uid)
+
+        if p.pw_name in approved_members:
+            operation="unlock"
+        elif p.pw_uid < starting_uid:
+            if printdebug:
+                print "DEBUG: Skipping reserved user %s:%s"%(p.pw_name,p.pw_uid)
+            continue
+        elif p.pw_name=="nobody":
+            continue
+        else:
+            operation="lock"
+            print "Disable user %s:%s"%(p.pw_name,p.pw_uid)
+
+        cmd = [
+            '/usr/local/sbin/userlock.sh',
+             p.pw_name,
+             operation,
+        ]
+        try:
+            if printdebug:
+                pprint.pprint(cmd)
+            if run:
+                result = subprocess.check_call( cmd )
+        except subprocess.CalledProcessError, e:
+            sys.stderr.write("Error: %s user %s\n" % (operation,username))
+            sys.stderr.write("%s\n" % e.output)
+        
+
+
         
 
 if __name__ == "__main__":
@@ -111,6 +145,8 @@ if __name__ == "__main__":
     run = True
     printdebug = False
     nih_file = False
+    approved_members = []    
+
     try:
         opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile="])
     except getopt.GetoptError:
@@ -185,10 +221,16 @@ if __name__ == "__main__":
 
         if printdebug:
             print "DEBUG: Username from SF = %s" % (username) 
-            
+
+        #At some point we need to disable inactive users
+        approved_members.append(username)
+        
         try:
             user_exists = pwd.getpwnam(username)
         except:
+            user_exists = None
+
+        if not user_exists:
             if fields['tenant']:
                 if not tenant_exist(fields['tenant']):
                     if fields['quota_leader']:
@@ -215,4 +257,11 @@ if __name__ == "__main__":
                     set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], printdebug=printdebug,run=run)
                 if fields['block_storage_quota']:
                     set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['object_storage_quota'], printdebug=printdebug,run=run)
-                
+
+   
+    #Lock users
+    try:
+        starting_uid=settings['general']['starting_uid']
+    except KeyError:
+        starting_uid=1500
+    lock_unapproved_users(approved_members=approved_members,starting_uid=starting_uid,printdebug=printdebug,) 

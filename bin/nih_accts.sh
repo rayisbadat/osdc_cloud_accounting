@@ -26,10 +26,5 @@ create_users(){
 	/usr/local/src/osdc_cloud_accounting/bin/sf_acct_create.py --nihfile $compiled_output_file 
     fi
 }
-disable_users(){
-	echo Disable users Not Implemented yet
-}
-
 download_file
 create_users
-disable_users
