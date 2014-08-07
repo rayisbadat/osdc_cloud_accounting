@@ -385,7 +385,7 @@ if __name__ == "__main__":
     #valid_tenant_memebers = they are the ones we are keeping in the tennat
     #invalid_tenant_members = users we need to remove from a tenant
     #additional_tenant_members = users we need to add
-    print "Adjusting tenant membership" 
+    print "Adjusting tenant membership:" 
     for tenant_name, csv_tenant_members in managed_tenants.items():
         #Intersection of CSV and SalesForce
         approved_tenant_members = csv_tenant_members.intersection( approved_members )
