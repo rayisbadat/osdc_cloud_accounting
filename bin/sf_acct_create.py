@@ -106,7 +106,7 @@ def set_quota(username, tenant, quota_type, quota_value, printdebug=None,run=Non
         return False
 
 
-def lock_unapproved_users(approved_members=None, starting_uid=1500, printdebug=None):
+def toggle_user_locks(approved_members=None, starting_uid=1500, printdebug=None):
     for p in pwd.getpwall():
         if printdebug:
             print "DEBUG: User on System %s:%s"%(p.pw_name,p.pw_uid)
@@ -201,7 +201,7 @@ def remove_member_from_tenant(tenant=None, users=None, role="_member_"):
             sys.stderr.write("%s\n" % e.output)
     
 
-def add_member_to_tenant(tenant=None, users=None, role="_member_"):
+def add_member_to_tenant(tenant=None, users=None, role="_member_", printdebug=None):
     """ Add users to the tenant """  
     for user in users:
         print "INFO: Adding user %s to tenant %s" % (user, tenant)
@@ -212,10 +212,12 @@ def add_member_to_tenant(tenant=None, users=None, role="_member_"):
             "--tenant=%s"%(tenant),
             "--role=%s"%(role),
         ]
+        if printdebug:
+            pprint.pprint( cmd )
         try:
             result = subprocess.check_call( cmd )
         except subprocess.CalledProcessError, e:
-            sys.stderr.write("Error: Adding  user %s to tenant %s\n" % (username,tenant) )
+            sys.stderr.write("Error: Adding  user %s to tenant %s\n" % (user,tenant) )
             sys.stderr.write("%s\n" % e.output)
         
 
@@ -375,8 +377,8 @@ if __name__ == "__main__":
         starting_uid=settings['general']['starting_uid']
     except KeyError:
         starting_uid=1500
-    print "Disabling Users:"
-    #lock_unapproved_users(approved_members=approved_members,starting_uid=starting_uid,printdebug=printdebug,) 
+    print "Locking/Unlocking Users:"
+    toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,printdebug=printdebug,) 
 
     #Fix the tenants for manged groups
     #csv_tenant_members = 
