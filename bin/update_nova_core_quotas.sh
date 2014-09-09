@@ -26,7 +26,6 @@ then
 fi
 tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep $USERNAME | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
 
-echo "RAY $tennant_id"
 
 if [ "$tennant_id" == "" ]
 then
@@ -37,7 +36,7 @@ fi
 
 if [ -z "$CORES" ]
 then
-    nova-manage account quota --project=${tennant_id}
+    nova quota-show --tenant=${tennant_id}
     exit 0
 fi
 
