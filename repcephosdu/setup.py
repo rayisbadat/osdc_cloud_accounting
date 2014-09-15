@@ -13,4 +13,17 @@
 #   limitations under the License.
 #
 
-from repswiftdu import RepSwiftDu
+from distutils.core import setup
+setup(name='repcephosdu',
+    version='0.1',
+    description = "Query and save swift du stats for later retrival (cant use cielometer with ceph)",
+    author = "Raymond Powell",
+    author_email='rpowell1@uchicago.edu',
+    classifiers = [
+        "License :: OSI Approved :: Apache License v2",
+        "Intended Audience :: Developers",
+    ],
+    url = "",
+    py_modules=['repcephosdu'],
+    requires=[],
+)

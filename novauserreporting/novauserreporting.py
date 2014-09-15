@@ -24,6 +24,7 @@ import pytz
 
 #The gluster poller
 from repquota import RepQuota
+from repcephosdu import RepCephOSdu
 
 # Here are the email package modules we'll need
 import smtplib
@@ -47,7 +48,7 @@ class UserUsageStat:
 
 
 class NovaUserReporting:
-    def __init__(self, config_file):
+    def __init__(self, config_file,debug=None, storage_type=None):
         """INit the function"""
         #Dict of settings
         self.settings = {}
@@ -74,6 +75,14 @@ class NovaUserReporting:
         self.override_nova_creds_with_env('OS_PASSWORD')
         self.override_nova_creds_with_env('OS_AUTH_URL')
         self.override_nova_creds_with_env('OS_TENANT_NAME')
+
+        #This kludge is until i refactor code to account for block, object, and glustervia repquota"
+        if storage_type:
+            self.storage_type=storage_type
+        else:
+            self.storage_type='object_storage'
+
+        self.debug=True
 
     def override_nova_creds_with_env(self, keyname):
        #Get the nova auth stuff if not already
@@ -338,28 +347,26 @@ class NovaUserReporting:
         nc = self.get_client(client_type=nc_client)
         flavors = nc.flavors.list()
 
-    def get_du(self, path=None, start_date=None, end_date=None):
+    ### FIXME: storage_type repquota should be hadcoded like this
+    def get_du(self, path=None, start_date=None, end_date=None,storage_type="repquota"):
         """AVG the gluster.$cloud table for a path corresponding to users homedir...hopefully"""
-        g = RepQuota(config_file=self.config_file)
-        try:
-            if self.settings['du_percentile'].isdigit():
-                du = g.get_95thp_du(
+        if storage_type == "repquota":
+            g = RepQuota(config_file=self.config_file)
+        else:
+            g = RepCephOSdu(debug=self.debug)
+
+        if self.settings['du_percentile'].isdigit():
+            du = g.get_percentile_du(
                         start_date=start_date.strftime(
-                            self.settings['timeformat']),
-                            end_date=end_date.strftime(self.settings['timeformat']),
-                            path=path)
-            else:
-                du = g.get_average_du(
-                        start_date=start_date.strftime(
-                            self.settings['timeformat']),
-                            end_date=end_date.strftime(self.settings['timeformat']),
-                            path=path)
-        except KeyError:
+                        self.settings['timeformat']),
+                        end_date=end_date.strftime(self.settings['timeformat']),
+                        path=path, percentile=self.settings['du_percentile'])
+        else:
             du = g.get_average_du(
                 start_date=start_date.strftime(
                     self.settings['timeformat']),
                     end_date=end_date.strftime(self.settings['timeformat']),
-                    path=path)
+                    path=path)  
 
         if du is None:
             #return 0
@@ -390,7 +397,8 @@ class NovaUserReporting:
                 #Adjust paths for real tenants...
                 du = self.get_du(
                     path="%s" % (user.name),
-                    start_date=self.start_time, end_date=self.cieling_time)
+                    start_date=self.start_time, end_date=self.cieling_time,
+                    storage_type=self.storage_type)
                 #self.cloud_users[user.name] = UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du)
                 self.cloud_users.setdefault(user.name, []).append( UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du) )
 

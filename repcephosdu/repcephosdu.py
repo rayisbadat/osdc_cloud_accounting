@@ -36,7 +36,7 @@ import numpy
 
 
 class RepCephOSdu:
-    def __init__(self, config_file="/etc/osdc_cloud_accounting/settings.py", storage_type='object'):
+    def __init__(self, config_file="/etc/osdc_cloud_accounting/settings.py", debug=None, storage_type='object'):
         """Polls gluster for quotas and save into dict"""
         self.settings = {}
 
@@ -65,6 +65,8 @@ class RepCephOSdu:
         if storage_type == "block":
             self.table_name = self.settings['repcephosdu']['db_block_table']
 
+        self.debug=debug
+
 
     def get_novarc_creds(self, path=None,debug=None):
         """
@@ -76,14 +78,14 @@ class RepCephOSdu:
 
         f = open(path,'r')
         novarc = f.read()
-        if debug:
+        if debug or self.debug:
             sys.stderr.write( "DEBUG: Read in %s:\n%s" %(path,novarc) )
         f.close()
         
         for key,value in self.re_novarc.findall( novarc ):
             novarc_creds[key.lower()] = value
 
-        if debug:
+        if debug or self.debug:
             sys.stderr.write( "DEBUG: novarc_creds = %s" %(novarc_creds) )
 
         return novarc_creds
@@ -105,26 +107,26 @@ class RepCephOSdu:
         os_creds['preauthtoken'] = keystone.auth_token
         os_creds['preauthurl'] = object_store_url
 
-        if debug:
+        if debug or self.debug:
             sys.stderr.write( "DEBUG: os_creds = %s" %(os_creds) )
 
         swift_conn=swiftclient.client.Connection( **os_creds )
 
         account_reply = swift_conn.get_account()
         buckets = account_reply[-1]
-        if debug:
+        if debug or self.debug:
             sys.stderr.write( "DEBUG: buckets  = %s" %(buckets) )
 
         total_bucket_du = 0
 
         for bucket in buckets:
             total_bucket_du += bucket['bytes']
-            if debug:
+            if debug or self.debug:
                 sys.stderr.write( "DEBUG: %s  = %s; total = %s" %(bucket['name'],bucket['bytes']) )
         
         return total_bucket_du
 
-    def update_db(self, user_name, tenant_name, du, debug, ):
+    def update_db(self, user_name, tenant_name, du, debug ):
       
         metadata = MetaData()
         table = Table(self.table_name, metadata,
@@ -145,7 +147,7 @@ class RepCephOSdu:
         except SQLAlchemyError, e:
             print e
 
-    def write_to_db(self,table=None, name=None, du=None, debug="debug" ):
+    def write_to_db(self,table=None, name=None, du=None, debug=None ):
         """Push it out to a file"""
 
         conn = self.db_connect(self.settings['repcephosdu']['db_database'])
@@ -156,8 +158,13 @@ class RepCephOSdu:
             })
         conn.execute(table.insert(), insert)
 
-    def get_percentile_du(self, start_date=None, end_date=None, name=None, percentile=95):
+    def get_percentile_du(self, start_date=None, end_date=None, name=None, path=None, debug=None, percentile=95):
         """Get the 95th percentile of the du"""
+
+        #For backwards compatibility:
+        if path and not name:
+            name = path
+
         if start_date is  None or end_date is None:
             sys.stderr.write(
                 "ERROR: Start and End Dates no specified in get_95thp_du")
@@ -169,6 +176,9 @@ class RepCephOSdu:
             end_date,
             name)
 
+        if debug or self.debug:
+            sys.stderr.write( "my_query: %s\n" %(my_query))
+
         try:
             dus=[]
             conn = self.db_connect(self.settings['repcephosdu']['db_database'])
@@ -176,8 +186,12 @@ class RepCephOSdu:
             results = conn.execute(s).fetchall()
             if results:
                 for x in results:
-                    dus.append(x)
-                result = numpy.percentile(a=dus,q=percentile)
+                    dus.append(float(x[0]))
+                if debug or self.debug:
+                    sys.stderr.write( "du: %s\n"  %(dus))
+                result = numpy.percentile(a=dus,q=float(percentile))
+                if debug or self.debug:
+                    sys.stderr.write( "result(%s): %s"  %(percentile, result))
                 return result
             else:
                 return 0
