@@ -350,6 +350,7 @@ if __name__ == "__main__":
                         #Will create the new tenant
                         print "INFO: Creating new tenant %s" % (fields['tenant'])
                         if create_tenant(tenant=fields['tenant'], printdebug=printdebug,run=run):
+                            add_member_to_tenant(role='quota_leader', tenant=fields['tenant'],users=[username] )
                             pass
                         else:
                             sys.stderr.write("ERROR: Creating new tenant %s skipping user creation.\n" % fields['tenant'] )
