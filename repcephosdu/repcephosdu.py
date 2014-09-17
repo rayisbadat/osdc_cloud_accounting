@@ -96,14 +96,16 @@ class RepCephOSdu:
             Takes the openstack credentials, gets a list of containers and their sizes, returns sum
         """
 
-        keystone = ksclient.Client(username=username, password=password, auth_url=auth_url, tenant_name=tenant_name)
+        os_creds={}
+        strip='\'"'
+        os_creds['user'] = username.translate(None,strip)
+        os_creds['key'] = password.translate(None,strip)
+        os_creds['tenant_name'] = tenant_name.translate(None,strip)
+        os_creds['authurl'] = auth_url.translate(None,strip)
+
+        keystone = ksclient.Client(username=os_creds['user'], password=password.translate(None,strip), auth_url=os_creds['authurl'], tenant_name=os_creds['tenant_name'])
         auth_token=keystone.auth_token
         object_store_url=str(keystone.service_catalog.get_urls(service_type='object-store', endpoint_type='internal')[0])
-        os_creds={}
-        os_creds['user'] = username
-        os_creds['key'] = password
-        os_creds['tenant_name'] = tenant_name
-        os_creds['authurl'] = auth_url
         os_creds['preauthtoken'] = keystone.auth_token
         os_creds['preauthurl'] = object_store_url
 
@@ -122,20 +124,21 @@ class RepCephOSdu:
         for bucket in buckets:
             total_bucket_du += bucket['bytes']
             if debug or self.debug:
-                sys.stderr.write( "DEBUG: %s  = %s; total = %s" %(bucket['name'],bucket['bytes']) )
+                sys.stderr.write( "DEBUG: %s  = %s; total = %s" %(bucket['name'], bucket['bytes'], total_bucket_du) )
         
         return total_bucket_du
 
-    def update_db(self, user_name, tenant_name, du, debug ):
+    def update_db(self, username, tenant_name, du, debug ):
       
         metadata = MetaData()
         table = Table(self.table_name, metadata,
                 Column('date', DateTime),   # Date of check
-                Column('name', Text),       # Name of Tenant/User 
+                Column('username', Text),       # Name of Tenant/User 
+                Column('tenant_name', Text),       # Name of Tenant/User 
                 Column('value', Float),     # Value in bytes ?
         )
  
-        self.write_to_db(table=table, name=tenant_name, du=du, debug=debug )
+        self.write_to_db(table=table, username=username, tenant_name=tenant_name, du=du, debug=debug )
 
     def db_connect(self, db):
         try:
@@ -147,34 +150,44 @@ class RepCephOSdu:
         except SQLAlchemyError, e:
             print e
 
-    def write_to_db(self,table=None, name=None, du=None, debug=None ):
+    def write_to_db(self,table=None, username=None, tenant_name=None,  du=None, debug=None ):
         """Push it out to a file"""
 
         conn = self.db_connect(self.settings['repcephosdu']['db_database'])
         insert = []
         insert.append({'date': self.now_time.strftime(self.settings['general']['timeformat']),
-                'name': name,
+                'username': username,
+                'tenant_name': tenant_name,
                 'value': int(du)
             })
         conn.execute(table.insert(), insert)
 
-    def get_percentile_du(self, start_date=None, end_date=None, name=None, path=None, debug=None, percentile=95):
+    def get_percentile_du(self, start_date=None, end_date=None, username=None, tenant_name=None, path=None, debug=None, percentile=95):
         """Get the 95th percentile of the du"""
 
         #For backwards compatibility:
-        if path and not name:
-            name = path
+        if path and not username:
+            username = path
 
         if start_date is  None or end_date is None:
             sys.stderr.write(
                 "ERROR: Start and End Dates no specified in get_95thp_du")
             sys.exit(1)
 
-        my_query = "SELECT value FROM %s where ( date >= '%s' and date <= '%s' ) and name = '%s'" % (
+        if username:
+            query_field = 'username'
+            query_value = username
+        elif tenant_name:
+            query_field = 'tenant_name'
+            query_value = tenant_name
+
+        my_query = "SELECT value FROM %s where ( date >= '%s' and date <= '%s' ) and %s = '%s'" % (
             self.table_name,
             start_date,
             end_date,
-            name)
+            query_field,
+            query_value)
+
 
         if debug or self.debug:
             sys.stderr.write( "my_query: %s\n" %(my_query))
@@ -225,14 +238,40 @@ if __name__ == "__main__":
         sys.stderr.write( "Usage: %s --novarc=/PATH/to/.novarc [--debug] [--update]\n"%(__file__) )
         sys.exit(0)
 
+    
+     
     if novarc:
         if os.path.isfile(novarc):
             x = RepCephOSdu(storage_type='object')
-            novarc_creds = x.get_novarc_creds(novarc, debug=debug)
-            swift_du = x.get_swift_du_for_tenant( debug=debug, **novarc_creds)
-            print "%s = %s" % (swift_du, novarc_creds)
-            if update:
-                x.update_db(user_name=novarc_creds['username'], tenant_name=novarc_creds['tenant_name'],  du=swift_du, debug=debug )
 
-            print x.get_percentile_du(start_date='2014-09-15 00:00:00', end_date='2014-09-15 23:59:59', name='admin')
+            novarc_creds = x.get_novarc_creds(novarc, debug=debug)
+            admin_creds = x.get_novarc_creds("/etc/osdc_cloud_accounting/admin_auth", debug=debug)
+
+            swift_du = x.get_swift_du_for_tenant( debug=debug, **novarc_creds)
+            if debug:
+                print "%s = %s" % (str(swift_du), str(novarc_creds))
+
+            if update:
+                #Find list of the quota leaders, who the quota needs to apply to
+                kc = ksclient.Client(**admin_creds)
+                users = {}
+                tenants = {}
+                
+                for user in  kc.users.list():
+                    users[user.name] = user.id
+                for tenant in  kc.tenants.list():
+                    tenants[tenant.name] = tenant.id
+                if debug:
+                    print users
+                    print tenants
+                roles = kc.roles.roles_for_user(user=users[novarc_creds['username']],tenant=tenants[novarc_creds['tenant_name']])
+                if debug:
+                    print roles 
+
+                #update in db if quota leader (SF term)
+                if [t for t in roles if "quota_leader" in  t.name]:
+                    x.update_db(username=novarc_creds['username'], tenant_name=novarc_creds['tenant_name'],  du=swift_du, debug=debug )
+
+
+            #print x.get_percentile_du(start_date='2014-09-15 00:00:00', end_date='2014-09-15 23:59:59', name='admin')
             

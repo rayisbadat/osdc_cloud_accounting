@@ -53,6 +53,7 @@ class NovaUserReporting:
         #Dict of settings
         self.settings = {}
         self.cloud_users = {}
+        self.debug = None
 
         #Stores the csv
         self.csv = []
@@ -82,7 +83,6 @@ class NovaUserReporting:
         else:
             self.storage_type='object_storage'
 
-        self.debug=True
 
     def override_nova_creds_with_env(self, keyname):
        #Get the nova auth stuff if not already
@@ -352,8 +352,10 @@ class NovaUserReporting:
         """AVG the gluster.$cloud table for a path corresponding to users homedir...hopefully"""
         if storage_type == "repquota":
             g = RepQuota(config_file=self.config_file)
+            unit_power = 20 # Divide result by Power of 2 to convert to GB
         else:
             g = RepCephOSdu(debug=self.debug)
+            unit_power = 30 # Divide result by Power of 2 to convert to GB
 
         if self.settings['du_percentile'].isdigit():
             du = g.get_percentile_du(
@@ -373,7 +375,7 @@ class NovaUserReporting:
             return None
         else:
             #Round to GB and return
-            return int(du / 2 ** 20)
+            return int(du / 2 ** unit_power)
 
     def load_stats(self, start_date=None, end_date=None):
         #Set the time range to pull reports for
@@ -381,11 +383,6 @@ class NovaUserReporting:
 
         #Load List of Tenants and Users
         self.load_user_list()
-
-        ##Find a specific tenant
-        #my_tenant =[x for x in nova_user_reports.tenants if x.name=='shared_tenant_test'][0]
-        #print my_tenant
-        #print my_tenant.name
 
         #Loop through tenants
         for tenant in self.tenants:
