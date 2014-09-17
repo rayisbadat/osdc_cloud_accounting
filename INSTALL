@@ -6,3 +6,4 @@
  * git clone https://github.com/openstack/python-novaclient.git  && cd python-novaclient && python setup.py install
  * Install beatbox from git  : https://github.com/superfell/Beatbox 
  * Loop through each library sub folder and python setup.py install   
+

@@ -245,13 +245,16 @@ if __name__ == "__main__":
             x = RepCephOSdu(storage_type='object')
 
             novarc_creds = x.get_novarc_creds(novarc, debug=debug)
-            admin_creds = x.get_novarc_creds("/etc/osdc_cloud_accounting/admin_auth", debug=debug)
 
-            swift_du = x.get_swift_du_for_tenant( debug=debug, **novarc_creds)
-            if debug:
-                print "%s = %s" % (str(swift_du), str(novarc_creds))
+            #If we are updating db then we do
+            if not update:
+                swift_du = x.get_swift_du_for_tenant( debug=debug, **novarc_creds)
+                print "%s = $s bytes" %(nova_creds['username'], swift_du)
+                if debug:
+                    print "%s = %s" % (str(swift_du), str(novarc_creds))
 
             if update:
+                admin_creds = x.get_novarc_creds("/etc/osdc_cloud_accounting/admin_auth", debug=debug)
                 #Find list of the quota leaders, who the quota needs to apply to
                 kc = ksclient.Client(**admin_creds)
                 users = {}
@@ -270,6 +273,9 @@ if __name__ == "__main__":
 
                 #update in db if quota leader (SF term)
                 if [t for t in roles if "quota_leader" in  t.name]:
+                    swift_du = x.get_swift_du_for_tenant( debug=debug, **novarc_creds)
+                    if debug:
+                        print "%s = %s" % (str(swift_du), str(novarc_creds))
                     x.update_db(username=novarc_creds['username'], tenant_name=novarc_creds['tenant_name'],  du=swift_du, debug=debug )
 
 
