@@ -70,6 +70,10 @@ if __name__ == "__main__":
                 if fields['storage_quota'] == 'None' or fields['storage_quota'] == None:
                     fields['storage_quota'] = settings['general']['storage_quota']
 
+                #originally designed to only take TB, this give us ability to create smaller.
+                fields['storage_quota'] = int(fields['storage_quota']*1024)
+
+
                 #Assemble command
                 print "Creating new user:  %s" % username
                 cmd = [
@@ -80,7 +84,7 @@ if __name__ == "__main__":
                     method,
                     settings['tukey']['cloud'],
                     fields['core_quota'],
-                    fields['storage_quota'] + 'TB',
+                    fields['storage_quota'] + 'GB',
                 ]
                 try:
                     if printcsv:
