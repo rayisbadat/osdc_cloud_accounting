@@ -71,7 +71,7 @@ if __name__ == "__main__":
                     fields['storage_quota'] = settings['general']['storage_quota']
 
                 #originally designed to only take TB, this give us ability to create smaller.
-                fields['storage_quota'] = int(fields['storage_quota']*1024)
+                fields['storage_quota'] = str(fields['storage_quota']*1024)
 
 
                 #Assemble command

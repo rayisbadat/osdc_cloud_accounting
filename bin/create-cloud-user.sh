@@ -2,6 +2,7 @@
 
 #set -v
 #set -e
+set -u
 
 if [ -e /etc/osdc_cloud_accounting/admin_auth ]
 then
@@ -22,7 +23,7 @@ fi
 
 # the id of the member role
 MEMBER_ROLE=$(/usr/bin/keystone role-list 2>/dev/null | perl -ne 'm/\|\s+(\S+)\s+\|\s+Member/ && print "$1\n"')
-MEMBER_ROLE=555870c6bca54361b61fd0d06ae101b6
+
 if [ -z "$MEMBER_ROLE" ]
 then
     echo "$0 Error: Could not determine Member role id for cloud"
