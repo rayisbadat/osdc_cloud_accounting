@@ -45,12 +45,12 @@ class SalesForceOCC:
         else:
             return None
 
-    def get_case_id(self, campaign, contact_id):
+    def get_case_id(self, case, contact_id):
         """ Given a ContactId and a Campaign find the case"""
         query = """SELECT CaseNumber, Id
                 FROM Case
                 WHERE ContactId ='%s' and ResourceName__c='%s'
-                """ % (contact_id, campaign)
+                """ % (contact_id, case)
 
         cases = self.svc.query(query)
 
@@ -60,7 +60,7 @@ class SalesForceOCC:
             except KeyError:
                 pass
 
-    def get_contact_id_by_case_username(self, campaign, cloud_username):
+    def get_contact_id_by_case_username(self, case, cloud_username):
         """Pull the username assosiated with the cloud/campaign.
             Used as last resort to find the edge case where system
             and salesforce do not match"""
@@ -71,7 +71,7 @@ class SalesForceOCC:
                 ResourceName__c='%s'
                 and
                 Server_Username_Associated_with_Invoice__c='%s'
-                """ % (campaign, cloud_username)
+                """ % (case, cloud_username)
 
         users = self.svc.query(query)
         for user in users:

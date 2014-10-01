@@ -481,7 +481,7 @@ class NovaUserReporting:
                 contact_id = sf.contacts[cloud_username]['id']
             except KeyError:
                 try:
-                    contact_id = sf.get_contact_id_by_case_username(campaign=self.settings['campaign'], cloud_username=cloud_username)
+                    contact_id = sf.get_contact_id_by_case_username(case=self.settings['case'], cloud_username=cloud_username)
                 except KeyError:
                     contact_id = None
 
@@ -489,7 +489,7 @@ class NovaUserReporting:
             if contact_id is not None:
                 # We prefer having a case, but can get away witout it
                 try:
-                    case_id = sf.get_case_id(campaign=self.settings['campaign'], contact_id=contact_id)
+                    case_id = sf.get_case_id(case=self.settings['case'], contact_id=contact_id)
                 except KeyError:
                     case_id = None
             
@@ -506,7 +506,7 @@ class NovaUserReporting:
                             sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" % (cloud_username, saver_result))
                     except KeyError:
                         # I do not know if its even possible to get here...
-                        sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" % (cloud_username))
+                        sys.stderr.write("ERROR: KeyError: Cannot find user '%s' in campaign in salesforce\n" % (cloud_username))
             else:
                 sys.stderr.write("ERROR: Cannot find user '%s' in campaign in salesforce\n" % (cloud_username))
                 
