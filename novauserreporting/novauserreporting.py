@@ -40,11 +40,13 @@ from salesforceocc import SalesForceOCC
 
 class UserUsageStat:
     """This is an object to store a users info"""
-    def __init__(self, username, tenant=None, corehrs=0, du=0):
+    def __init__(self, username, tenant=None, corehrs=0, du=0,obj_du=0,blk_du=0):
         self.username = username
         self.tenant = tenant
         self.corehrs = corehrs
         self.du = du
+        self.obj_du = obj_du 
+        self.blk_du = blk_du
 
 
 class NovaUserReporting:
@@ -302,6 +304,134 @@ class NovaUserReporting:
         conn.close()
         return int(corehrs_total)
 
+
+    def get_cinder_du(self, user_id=None, tenant_id=None):
+        """Fetch the core hrs for a uuid, can be by tenant or user"""
+        #An array of the storage, we will take a start and stop time period and iterate over
+        dus = []
+        query_base = """SELECT
+                        created_at,
+                        updated_at,
+                        deleted_at,
+                        deleted,
+                        user_id,
+                        project_id,
+                        size,
+                        terminated_at
+
+                    from cinder.volumes where status != 'error' and
+                    (
+                        ( created_at >= '%s' and created_at <= '%s' )
+                        or
+                        ( terminated_at >= '%s' and terminated_at <= '%s' )
+                        or
+                        ( deleted_at >= '%s' and deleted_at <= '%s' )
+                        or
+                        ( terminated_at is NULL and deleted_at is NULL and deleted = '0')
+                    )
+                    """ % (
+                            self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
+                            self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
+                            self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
+                        )
+
+        if user_id is None and tenant_id is not None:
+            query = query_base + "and %s = '%s'" % ('project_id', tenant_id)
+        elif user_id is not None and tenant_id is None:
+            query = query_base + "and %s = '%s'" % ('user_id', user_id)
+        elif user_id is not None and tenant_id is not None:
+            query = query_base + "and ( %s = '%s' and %s = '%s')" % ('project_id', tenant_id, 'user_id', user_id)
+        else:
+            sys.stderr.write("ERROR: How did you get here?\n")
+            sys.exit(1)
+
+        try:
+            conn = self.db_connect(self.settings['cinderdb'])
+            s = text(query)
+            results = conn.execute(s)
+            conn.close()
+        except SQLAlchemyError as e:
+            sys.stderr.write("ERROR-NUR: Erroring querying the databases: %s\n" % (e) )
+            sys.exit(1)
+
+
+        #Break out the values we need
+        for row in results:
+            try:
+                created_at = row[0].replace(tzinfo=timezone('UTC'))
+            except AttributeError:
+                created_at = None
+
+            try:
+                updated_at = row[1].replace(tzinfo=timezone('UTC'))
+            except AttributeError:
+                updated_at = None
+
+            try:
+                deleted_at = row[2].replace(tzinfo=timezone('UTC'))
+            except AttributeError:
+                deleted_at = None
+
+            deleted = int(row[3])
+            user_id = row[4]
+            project_id = row[5]
+            size = int(row[6])
+            try:
+                terminated_at = row[7].replace(tzinfo=timezone('UTC'))
+            except AttributeError:
+                terminated_at = None
+
+            #Edge case for when VM started
+            if launched_at is None:
+                if scheduled_at is not None:
+                    better_launched_at = scheduled_at
+                else:
+                    better_launched_at = created_at
+            else:
+                better_launched_at = launched_at
+
+            #Find the term time for a vm
+            if deleted != 0 and terminated_at is not None:
+                better_terminated_at = terminated_at
+            elif deleted != 0 and deleted_at is not None:
+                better_terminated_at = deleted_at
+            elif deleted != 0 and updated_at is not None:
+                better_terminated_at = updated_at
+            elif deleted != 0 and deleted_at is None:
+                #Something Bad happened ignore this VM
+                better_terminated_at = better_launched_at
+            elif deleted == 0 and deleted_at is not None:
+                sys.stderr.write("ERROR: How did you get, here. Marked deleted but no deleted_at %s\n")
+                sys.exit(1)
+            elif deleted == 0:
+                better_terminated_at = self.cieling_time
+            else:
+                sys.stderr.write("ERROR: You have found an unsupported Cinder state, investigate and extend code.  deleted: %s, terminated_at: %s\n" % (deleted, terminated_at))
+                sys.exit(1)
+
+            if better_terminated_at > self.cieling_time:
+                safe_terminated_at = self.cieling_time
+            else:
+                safe_terminated_at = better_terminated_at
+
+            if safe_terminated_at < self.start_time:
+                continue
+            if better_launched_at > self.cieling_time:
+                continue
+
+            #IF started before start_time adjust
+            if better_launched_at <= self.start_time and safe_terminated_at >= self.start_time:
+                safe_launched_at = self.start_time
+            else:
+                safe_launched_at = better_launched_at
+
+            if safe_launched_at >= self.start_time and safe_terminated_at <= self.cieling_time and safe_launched_at <= safe_terminated_at:
+                #After all this only sum up the ones in range
+                
+
+        return int(du)
+
+
     def get_client(self, client_type, username=None, password=None, tenant=None, url=None):
         """ Get the client object for python*-client """
         if username is None:
@@ -353,7 +483,7 @@ class NovaUserReporting:
         if storage_type == "repquota":
             g = RepQuota(config_file=self.config_file)
             unit_power = 20 # Divide result by Power of 2 to convert to GB
-        else:
+        elif storage_type == 'object_store':
             g = RepCephOSdu(debug=self.debug)
             unit_power = 30 # Divide result by Power of 2 to convert to GB
 
