@@ -83,7 +83,7 @@ class NovaUserReporting:
         if storage_type:
             self.storage_type=storage_type
         else:
-            self.storage_type='object_storage'
+            self.storage_type='object'
 
 
     def override_nova_creds_with_env(self, keyname):
@@ -309,126 +309,65 @@ class NovaUserReporting:
         """Fetch the core hrs for a uuid, can be by tenant or user"""
         #An array of the storage, we will take a start and stop time period and iterate over
         dus = []
-        query_base = """SELECT
-                        created_at,
-                        updated_at,
-                        deleted_at,
-                        deleted,
-                        user_id,
-                        project_id,
-                        size,
-                        terminated_at
 
-                    from cinder.volumes where status != 'error' and
-                    (
-                        ( created_at >= '%s' and created_at <= '%s' )
-                        or
-                        ( terminated_at >= '%s' and terminated_at <= '%s' )
-                        or
-                        ( deleted_at >= '%s' and deleted_at <= '%s' )
-                        or
-                        ( terminated_at is NULL and deleted_at is NULL and deleted = '0')
-                    )
-                    """ % (
-                            self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
-                            self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
-                            self.start_time.strftime(self.settings['timeformat']), self.cieling_time.strftime(self.settings['timeformat']),
-                        )
-
-        if user_id is None and tenant_id is not None:
-            query = query_base + "and %s = '%s'" % ('project_id', tenant_id)
-        elif user_id is not None and tenant_id is None:
-            query = query_base + "and %s = '%s'" % ('user_id', user_id)
-        elif user_id is not None and tenant_id is not None:
-            query = query_base + "and ( %s = '%s' and %s = '%s')" % ('project_id', tenant_id, 'user_id', user_id)
-        else:
-            sys.stderr.write("ERROR: How did you get here?\n")
-            sys.exit(1)
+        #The time period that we care about
+        start_time=self.start_time.strftime(self.settings['timeformat'])
+        stop_time=self.cieling_time.strftime(self.settings['timeformat'])
 
         try:
             conn = self.db_connect(self.settings['cinderdb'])
-            s = text(query)
-            results = conn.execute(s)
-            conn.close()
+
         except SQLAlchemyError as e:
             sys.stderr.write("ERROR-NUR: Erroring querying the databases: %s\n" % (e) )
             sys.exit(1)
 
-
-        #Break out the values we need
-        for row in results:
-            try:
-                created_at = row[0].replace(tzinfo=timezone('UTC'))
-            except AttributeError:
-                created_at = None
-
-            try:
-                updated_at = row[1].replace(tzinfo=timezone('UTC'))
-            except AttributeError:
-                updated_at = None
-
-            try:
-                deleted_at = row[2].replace(tzinfo=timezone('UTC'))
-            except AttributeError:
-                deleted_at = None
-
-            deleted = int(row[3])
-            user_id = row[4]
-            project_id = row[5]
-            size = int(row[6])
-            try:
-                terminated_at = row[7].replace(tzinfo=timezone('UTC'))
-            except AttributeError:
-                terminated_at = None
-
-            #Edge case for when VM started
-            if launched_at is None:
-                if scheduled_at is not None:
-                    better_launched_at = scheduled_at
-                else:
-                    better_launched_at = created_at
+        #Loop through time period and 
+        while start_time < end_time:
+            temp_du = None
+            query_base = """SELECT size
+                        from cinder.volumes where status != 'error' and
+                        (
+                            ( terminated_at >= '%s' and terminated_at <= '%s' )
+                            or
+                            ( deleted_at >= '%s' and deleted_at <= '%s' )
+                            or
+                            ( terminated_at is NULL and deleted_at is NULL and deleted = '0')
+                        )
+                        """ % (
+                                self.start_time.strftime(start_time, stop_time),
+                                self.start_time.strftime(start_time, stop_time),
+                            )
+    
+            if user_id is None and tenant_id is not None:
+                query = query_base + "and %s = '%s'" % ('project_id', tenant_id)
+            elif user_id is not None and tenant_id is None:
+                query = query_base + "and %s = '%s'" % ('user_id', user_id)
+            elif user_id is not None and tenant_id is not None:
+                query = query_base + "and ( %s = '%s' and %s = '%s')" % ('project_id', tenant_id, 'user_id', user_id)
             else:
-                better_launched_at = launched_at
-
-            #Find the term time for a vm
-            if deleted != 0 and terminated_at is not None:
-                better_terminated_at = terminated_at
-            elif deleted != 0 and deleted_at is not None:
-                better_terminated_at = deleted_at
-            elif deleted != 0 and updated_at is not None:
-                better_terminated_at = updated_at
-            elif deleted != 0 and deleted_at is None:
-                #Something Bad happened ignore this VM
-                better_terminated_at = better_launched_at
-            elif deleted == 0 and deleted_at is not None:
-                sys.stderr.write("ERROR: How did you get, here. Marked deleted but no deleted_at %s\n")
+                sys.stderr.write("ERROR: How did you get here?\n")
                 sys.exit(1)
-            elif deleted == 0:
-                better_terminated_at = self.cieling_time
-            else:
-                sys.stderr.write("ERROR: You have found an unsupported Cinder state, investigate and extend code.  deleted: %s, terminated_at: %s\n" % (deleted, terminated_at))
+    
+            try:
+                s = text(query)
+                results = conn.execute(s)
+            except SQLAlchemyError as e:
+                sys.stderr.write("ERROR-NUR: Erroring querying the databases: %s\n" % (e) )
                 sys.exit(1)
+    
+            #sum up the sizes for a given period
+            for row in results:
+                if temp_du is None and row[0]:
+                    temp_du = row[0]
+                if row[0]:
+                    temp_du += row[0]
 
-            if better_terminated_at > self.cieling_time:
-                safe_terminated_at = self.cieling_time
-            else:
-                safe_terminated_at = better_terminated_at
+            #append the dus to array for latter processing
+            dus.append(temp_du)
+            start_time +=datetime.timedelta(0,self.settings['du_period'])
 
-            if safe_terminated_at < self.start_time:
-                continue
-            if better_launched_at > self.cieling_time:
-                continue
-
-            #IF started before start_time adjust
-            if better_launched_at <= self.start_time and safe_terminated_at >= self.start_time:
-                safe_launched_at = self.start_time
-            else:
-                safe_launched_at = better_launched_at
-
-            if safe_launched_at >= self.start_time and safe_terminated_at <= self.cieling_time and safe_launched_at <= safe_terminated_at:
-                #After all this only sum up the ones in range
-                
-
+    
+        conn.close()
         return int(du)
 
 
@@ -483,9 +422,17 @@ class NovaUserReporting:
         if storage_type == "repquota":
             g = RepQuota(config_file=self.config_file)
             unit_power = 20 # Divide result by Power of 2 to convert to GB
-        elif storage_type == 'object_store':
+
+        elif storage_type == 'object':
             g = RepCephOSdu(debug=self.debug)
             unit_power = 30 # Divide result by Power of 2 to convert to GB
+
+        elif storage_type == 'block':
+            sys.stderr.write("ERROR: Blk not implemented\n") 
+            pass
+        else:
+            sys.stderr.write("ERROR: How did you get here\n") 
+            pass
 
         if self.settings['du_percentile'].isdigit():
             du = g.get_percentile_du(
