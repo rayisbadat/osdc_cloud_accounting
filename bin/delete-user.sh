@@ -35,6 +35,25 @@ check_reserved() {
         exit 1
     fi
 }
+
+remove_from_role () {
+    user_id=$( keystone user-list | grep " $USERNAME "  | cut -f2 -d" " )
+    if [ "$user_id" == "" ]
+    then
+        echo "ERROR: Can not user_id of user: $USERNAME"
+    fi
+    tenant_id=$( keystone tenant-list | grep " $USERNAME "  | cut -f2 -d" " )
+    if [ "$tenant_id" == "" ]
+    then
+        echo "ERROR: Can not establish tenan_id of user: $USERNAME"
+    fi
+
+    for role in $( keystone role-list | grep -i member | cut -f2 -d " " )
+    do
+        keystone user-role-remove --tenant $tenant --user $user --role $role 2>/dev/null 
+    done
+
+}
 remove_nova_tenant() {
     tenant_id=$( keystone tenant-list | grep " $USERNAME "  | cut -f2 -d" " )
     if [ "$tenant_id" == "" ]
@@ -109,6 +128,7 @@ remove_tukey_user() {
 
 
 check_reserved
+remove_from_role
 remove_nova_user
 remove_nova_tenant
 remove_gui_creds
