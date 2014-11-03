@@ -65,6 +65,8 @@ class RepCephOSdu:
         if storage_type == "block":
             self.table_name = self.settings['repcephosdu']['db_block_table']
 
+        self.force_updates_for=self.settings['repcephosdu']['force_update_for']
+
         self.debug=debug
 
 
@@ -213,6 +215,41 @@ class RepCephOSdu:
             sys.stderr.write("Erroring querying the databases\n")
             sys.exit(1)
 
+    def is_quota_leader(self, tenant_name, username):
+        """ Only update for people who are makred leaders in SF.  Prevents dulpicate entries """
+        admin_repcephosddu = RepCephOSdu(storage_type='object')
+        admin_creds = admin_repcephosddu.get_novarc_creds("/etc/osdc_cloud_accounting/admin_auth", debug=debug)
+    
+    
+        #Find list of the quota leaders, who the quota needs to apply to
+        kc = ksclient.Client(**admin_creds)
+        users = {}
+        tenants = {}
+        for user in  kc.users.list():
+            users[user.name] = user.id
+        for tenant in  kc.tenants.list():
+            tenants[tenant.name] = tenant.id
+        if debug:
+            print users
+            print tenants
+        roles = kc.roles.roles_for_user(user=users[username],tenant=tenants[tenant_name])
+        if debug:
+            print roles
+    
+        if [t for t in roles if "quota_leader" in  t.name]:
+            return True
+    
+        return False
+
+    def force_update(self, tenant_name, username):
+        """ Do we force an update even if not a quota leader """
+        if debug:
+            print "Do we force update %s:%s in %s" %( tenant_name, username, self.force_updates_for.split(','))
+        if "%s:%s"%(tenant_name,username) in self.force_updates_for.split(','):
+            #if datamanager users
+            return True
+        return False
+    
 
 if __name__ == "__main__":
 
@@ -242,42 +279,32 @@ if __name__ == "__main__":
      
     if novarc:
         if os.path.isfile(novarc):
-            x = RepCephOSdu(storage_type='object')
+            user_repcephosddu = RepCephOSdu(storage_type='object')
 
-            novarc_creds = x.get_novarc_creds(novarc, debug=debug)
+            novarc_creds = user_repcephosddu.get_novarc_creds(novarc, debug=debug)
+            tenant_name=novarc_creds['tenant_name']
+            username=novarc_creds['username']
+            force_updates_for=user_repcephosddu.force_updates_for
+
+            swift_du = user_repcephosddu.get_swift_du_for_tenant( debug=debug, **novarc_creds)
+            if debug:
+                print "%s = %s" % (str(swift_du), str(novarc_creds))
 
             #If we are updating db then we do
             if not update:
-                swift_du = x.get_swift_du_for_tenant( debug=debug, **novarc_creds)
-                print "%s = $s bytes" %(nova_creds['username'], swift_du)
-                if debug:
-                    print "%s = %s" % (str(swift_du), str(novarc_creds))
+                print "%s = %s bytes" %(novarc_creds['username'], swift_du)
 
             if update:
-                admin_creds = x.get_novarc_creds("/etc/osdc_cloud_accounting/admin_auth", debug=debug)
-                #Find list of the quota leaders, who the quota needs to apply to
-                kc = ksclient.Client(**admin_creds)
-                users = {}
-                tenants = {}
-                
-                for user in  kc.users.list():
-                    users[user.name] = user.id
-                for tenant in  kc.tenants.list():
-                    tenants[tenant.name] = tenant.id
-                if debug:
-                    print users
-                    print tenants
-                roles = kc.roles.roles_for_user(user=users[novarc_creds['username']],tenant=tenants[novarc_creds['tenant_name']])
-                if debug:
-                    print roles 
 
-                #update in db if quota leader (SF term)
-                if [t for t in roles if "quota_leader" in  t.name]:
-                    swift_du = x.get_swift_du_for_tenant( debug=debug, **novarc_creds)
+                if user_repcephosddu.is_quota_leader(tenant_name=tenant_name, username=username):
+                    user_repcephosddu.update_db(username=username, tenant_name=tenant_name,  du=swift_du, debug=debug )
                     if debug:
-                        print "%s = %s" % (str(swift_du), str(novarc_creds))
-                    x.update_db(username=novarc_creds['username'], tenant_name=novarc_creds['tenant_name'],  du=swift_du, debug=debug )
+                        print "Update Quota Leader: %s:%s=%s" % (username,tenant_name, swift_du)
+                    
+                if user_repcephosddu.force_update(tenant_name=tenant_name, username=username):
+                    #if datamanager users
+                    user_repcephosddu.update_db(username=username, tenant_name=tenant_name,  du=swift_du, debug=debug )
+                    if debug:
+                        print "Update Forced: %s:%s=%s" % (username,tenant_name, swift_du)
 
 
-            #print x.get_percentile_du(start_date='2014-09-15 00:00:00', end_date='2014-09-15 23:59:59', name='admin')
-            

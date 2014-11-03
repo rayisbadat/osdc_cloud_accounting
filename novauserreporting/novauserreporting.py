@@ -418,8 +418,7 @@ class NovaUserReporting:
         nc = self.get_client(client_type=nc_client)
         flavors = nc.flavors.list()
 
-    ### FIXME: storage_type repquota should be hadcoded like this
-    def get_du(self, user_name=None, tenant_name=None, user_id=None, tenant_id=None, start_date=None, end_date=None,storage_type="repquota"):
+    def get_du(self, user_name=None, tenant_name=None, user_id=None, tenant_id=None, start_date=None, end_date=None,storage_type=None):
         """AVG the gluster.$cloud table for a path corresponding to users homedir...hopefully"""
 
         du = None
@@ -472,6 +471,9 @@ class NovaUserReporting:
 
         #Loop through tenants
         for tenant in self.tenants:
+            if tenant.name in self.settings['ignore_tenants'].split(','):
+                print "MOO"
+                continue
 
             #Find users in a tenant
             tenant_users = tenant.list_users()
@@ -479,6 +481,8 @@ class NovaUserReporting:
                 corehrs = self.get_corehrs(user_id=user.id, tenant_id=tenant.id)
                 #Adjust paths for real tenants...
                 du = 0
+                obj_du = 0
+                blk_du = 0
                 for storage_type in self.settings['storage_types'].split(','):
                     temp_du = self.get_du(
                         user_name=str(user.name),
@@ -489,24 +493,33 @@ class NovaUserReporting:
                         end_date=self.cieling_time,
                         storage_type=storage_type
                     )
-                    sys.stderr.write("%s: %s DU=%s\n" %(user.name, storage_type, int(temp_du)))
-                    du += temp_du
-                self.cloud_users.setdefault(user.name, []).append( UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du) )
+                    if storage_type == 'object':
+                        obj_du = temp_du
+                    elif storage_type == 'block':
+                        blk_du = temp_du
+                    else:
+                        du += temp_du
+                sys.stderr.write( "Tenant: %s, USER: %s,core=%s,obj=%s,blk=%s,type=%s\n" %(tenant.name,user.name, corehrs,obj_du, blk_du, storage_type))
+                self.cloud_users.setdefault(user.name, []).append( UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du, obj_du=obj_du, blk_du=blk_du) )
+                for cloud_user, stats in self.cloud_users.items():
+                    if cloud_user == user.name:
+                        pprint.pprint(cloud_user)
+                        pprint.pprint(vars(stats[0]))
 
     def gen_csv(self):
         self.csv = []
-        self.csv.extend(["User, Core Hours (H), Disk Usage (GB)"])
+        self.csv.extend(["User, Core Hours (H), Misc Disk Usage (GB), Object Storage (GB), Block Storage (GB)"])
         for cloud_user, stats in self.cloud_users.items():
             #self.csv.extend(["%s,%s,%s" % (cloud_user, stats.corehrs, stats.du)])
             #This is stupid but until we have better handling on multi tenant users, its kludged to work
 
-            print "cloud_user: %s" % cloud_user
-            pprint.pprint( stats )
             du = stats[0].du
+            obj_du = stats[0].obj_du
+            blk_du = stats[0].blk_du
             corehrs = 0
             for per_tenant_corehrs in stats:
                 corehrs += per_tenant_corehrs.corehrs
-            self.csv.extend(["%s,%s,%s" % (cloud_user, corehrs, du)])
+            self.csv.extend(["%s,%s,%s,%s,%s" % (cloud_user, corehrs, du,obj_du, blk_du)])
 
 
     def print_csv(self):
@@ -596,9 +609,15 @@ class NovaUserReporting:
                     # Write to SalesForce
                     try:
                         saver_result = sf.create_invoice_task(
-                            campaign=self.settings['campaign'], contact_id=contact_id,
-                            case_id=case_id, corehrs=corehrs, du=du,
-                            start_date=self.start_time, end_date=self.end_time)
+                            campaign=self.settings['campaign'], 
+                            contact_id=contact_id,
+                            case_id=case_id, 
+                            corehrs=corehrs, 
+                            du=du,
+                            blk_du=blk_du,
+                            obj_du=blk_du,
+                            start_date=self.start_time, 
+                            end_date=self.end_time)
                         if case_id is None:
                             sys.stderr.write("WARN: Cannot find the case number for users %s. Task still created with id %s.\n" % (cloud_username, saver_result))
                     except KeyError:
