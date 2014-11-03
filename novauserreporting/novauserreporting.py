@@ -37,6 +37,8 @@ import mimetypes
 
 from salesforceocc import SalesForceOCC
 
+import numpy
+
 
 class UserUsageStat:
     """This is an object to store a users info"""
@@ -78,12 +80,6 @@ class NovaUserReporting:
         self.override_nova_creds_with_env('OS_PASSWORD')
         self.override_nova_creds_with_env('OS_AUTH_URL')
         self.override_nova_creds_with_env('OS_TENANT_NAME')
-
-        #This kludge is until i refactor code to account for block, object, and glustervia repquota"
-        if storage_type:
-            self.storage_type=storage_type
-        else:
-            self.storage_type='object'
 
 
     def override_nova_creds_with_env(self, keyname):
@@ -305,14 +301,16 @@ class NovaUserReporting:
         return int(corehrs_total)
 
 
-    def get_cinder_du(self, user_id=None, tenant_id=None):
+    def get_cinder_du_percentile(self, user_id=None, tenant_id=None, percentile=95):
         """Fetch the core hrs for a uuid, can be by tenant or user"""
         #An array of the storage, we will take a start and stop time period and iterate over
         dus = []
 
         #The time period that we care about
-        start_time=self.start_time.strftime(self.settings['timeformat'])
-        stop_time=self.cieling_time.strftime(self.settings['timeformat'])
+        start_time=self.start_time
+        stop_time=self.cieling_time
+        start_time_str=self.start_time.strftime(self.settings['timeformat'])
+        stop_time_str=self.cieling_time.strftime(self.settings['timeformat'])
 
         try:
             conn = self.db_connect(self.settings['cinderdb'])
@@ -322,8 +320,8 @@ class NovaUserReporting:
             sys.exit(1)
 
         #Loop through time period and 
-        while start_time < end_time:
-            temp_du = None
+        while start_time < stop_time:
+            temp_du = 0
             query_base = """SELECT size
                         from cinder.volumes where status != 'error' and
                         (
@@ -334,8 +332,8 @@ class NovaUserReporting:
                             ( terminated_at is NULL and deleted_at is NULL and deleted = '0')
                         )
                         """ % (
-                                self.start_time.strftime(start_time, stop_time),
-                                self.start_time.strftime(start_time, stop_time),
+                                start_time_str, stop_time_str,
+                                start_time_str, stop_time_str,
                             )
     
             if user_id is None and tenant_id is not None:
@@ -357,18 +355,22 @@ class NovaUserReporting:
     
             #sum up the sizes for a given period
             for row in results:
-                if temp_du is None and row[0]:
-                    temp_du = row[0]
-                if row[0]:
+                if row[0] :
                     temp_du += row[0]
 
             #append the dus to array for latter processing
             dus.append(temp_du)
-            start_time +=datetime.timedelta(0,self.settings['du_period'])
+            start_time += timedelta(seconds=int(self.settings['du_period']))
 
-    
+   
         conn.close()
-        return int(du)
+
+        if dus:
+            du = numpy.percentile(a=dus,q=float(percentile))
+        else:
+            du = 0
+
+        return du
 
 
     def get_client(self, client_type, username=None, password=None, tenant=None, url=None):
@@ -417,38 +419,45 @@ class NovaUserReporting:
         flavors = nc.flavors.list()
 
     ### FIXME: storage_type repquota should be hadcoded like this
-    def get_du(self, path=None, start_date=None, end_date=None,storage_type="repquota"):
+    def get_du(self, user_name=None, tenant_name=None, user_id=None, tenant_id=None, start_date=None, end_date=None,storage_type="repquota"):
         """AVG the gluster.$cloud table for a path corresponding to users homedir...hopefully"""
+
+        du = None
+
         if storage_type == "repquota":
-            g = RepQuota(config_file=self.config_file)
             unit_power = 20 # Divide result by Power of 2 to convert to GB
 
+            g = RepQuota(config_file=self.config_file)
+            du = g.get_percentile_du(
+                        start_date=start_date.strftime(self.settings['timeformat']),
+                        end_date=end_date.strftime(self.settings['timeformat']),
+                        path=user_name, 
+                        percentile=self.settings['du_percentile']
+                )
+
         elif storage_type == 'object':
-            g = RepCephOSdu(debug=self.debug)
             unit_power = 30 # Divide result by Power of 2 to convert to GB
 
-        elif storage_type == 'block':
-            sys.stderr.write("ERROR: Blk not implemented\n") 
-            pass
-        else:
-            sys.stderr.write("ERROR: How did you get here\n") 
-            pass
-
-        if self.settings['du_percentile'].isdigit():
+            g = RepCephOSdu(debug=self.debug)
             du = g.get_percentile_du(
-                        start_date=start_date.strftime(
-                        self.settings['timeformat']),
+                        start_date=start_date.strftime(self.settings['timeformat']),
                         end_date=end_date.strftime(self.settings['timeformat']),
-                        path=path, percentile=self.settings['du_percentile'])
+                        path=user_name, 
+                        percentile=self.settings['du_percentile']
+                )
+
+        elif storage_type == 'block':
+            unit_power = 0 # Divide result by Power of 2 to convert to GB
+            du = self.get_cinder_du_percentile(
+                tenant_id=tenant_id, 
+                user_id=user_id,
+                percentile=self.settings['du_percentile'] )
+
         else:
-            du = g.get_average_du(
-                start_date=start_date.strftime(
-                    self.settings['timeformat']),
-                    end_date=end_date.strftime(self.settings['timeformat']),
-                    path=path)  
+            sys.stderr.write("ERROR: How did you get here: %s\n" % (storage_type)) 
+            pass
 
         if du is None:
-            #return 0
             return None
         else:
             #Round to GB and return
@@ -469,11 +478,19 @@ class NovaUserReporting:
             for user in tenant_users:
                 corehrs = self.get_corehrs(user_id=user.id, tenant_id=tenant.id)
                 #Adjust paths for real tenants...
-                du = self.get_du(
-                    path="%s" % (user.name),
-                    start_date=self.start_time, end_date=self.cieling_time,
-                    storage_type=self.storage_type)
-                #self.cloud_users[user.name] = UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du)
+                du = 0
+                for storage_type in self.settings['storage_types'].split(','):
+                    temp_du = self.get_du(
+                        user_name=str(user.name),
+                        tenant_name=str(tenant.name),
+                        user_id = str(user.id),
+                        tenant_id = str(tenant.id),
+                        start_date=self.start_time, 
+                        end_date=self.cieling_time,
+                        storage_type=storage_type
+                    )
+                    sys.stderr.write("%s: %s DU=%s\n" %(user.name, storage_type, int(temp_du)))
+                    du += temp_du
                 self.cloud_users.setdefault(user.name, []).append( UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du) )
 
     def gen_csv(self):
@@ -482,6 +499,9 @@ class NovaUserReporting:
         for cloud_user, stats in self.cloud_users.items():
             #self.csv.extend(["%s,%s,%s" % (cloud_user, stats.corehrs, stats.du)])
             #This is stupid but until we have better handling on multi tenant users, its kludged to work
+
+            print "cloud_user: %s" % cloud_user
+            pprint.pprint( stats )
             du = stats[0].du
             corehrs = 0
             for per_tenant_corehrs in stats:
