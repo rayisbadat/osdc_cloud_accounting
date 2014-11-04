@@ -199,6 +199,7 @@ class NovaUserReporting:
         try:
             conn = self.db_connect(self.settings['novadb'])
             s = text(query)
+            pprint.pprint( s )
             results = conn.execute(s)
         except SQLAlchemyError as e:
             sys.stderr.write("ERROR-NUR: Erroring querying the databases: %s\n" % (e) )
@@ -322,19 +323,42 @@ class NovaUserReporting:
         #Loop through time period and 
         while start_time < stop_time:
             temp_du = 0
-            query_base = """SELECT size
+            #query_base = """SELECT size
+            #            from cinder.volumes where status != 'error' and
+            #            (
+            #                ( terminated_at >= '%s' and terminated_at <= '%s' )
+            #                or
+            #                ( deleted_at >= '%s' and deleted_at <= '%s' )
+            #                or
+            #                ( terminated_at is NULL and deleted_at is NULL and deleted = '0')
+            #            )
+            #            """ % (
+            #                    start_time_str, stop_time_str,
+            #                    start_time_str, stop_time_str,
+            #                )
+
+            query_base = """ SELECT size
                         from cinder.volumes where status != 'error' and
-                        (
+                        ( 
+                            ( launched_at >= '%s' and launched_at <= '%s' )
+                            or
                             ( terminated_at >= '%s' and terminated_at <= '%s' )
                             or
                             ( deleted_at >= '%s' and deleted_at <= '%s' )
                             or
-                            ( terminated_at is NULL and deleted_at is NULL and deleted = '0')
-                        )
-                        """ % (
+                            ( terminated_at is NULL and deleted_at is NULL and deleted = '0' and launched_at <= '%s')
+                            or
+                            ( launched_at <= '%s' and terminated_at >= '%s' )
+                        ) """ % (
                                 start_time_str, stop_time_str,
+                                start_time_str, stop_time_str,
+                                start_time_str, stop_time_str,
+                                stop_time_str,
                                 start_time_str, stop_time_str,
                             )
+
+
+
     
             if user_id is None and tenant_id is not None:
                 query = query_base + "and %s = '%s'" % ('project_id', tenant_id)
@@ -348,6 +372,7 @@ class NovaUserReporting:
     
             try:
                 s = text(query)
+                print "Cinder:\n%s" %(query)
                 results = conn.execute(s)
             except SQLAlchemyError as e:
                 sys.stderr.write("ERROR-NUR: Erroring querying the databases: %s\n" % (e) )
@@ -451,6 +476,7 @@ class NovaUserReporting:
                 tenant_id=tenant_id, 
                 user_id=user_id,
                 percentile=self.settings['du_percentile'] )
+            pprint.pprint(du)
 
         else:
             sys.stderr.write("ERROR: How did you get here: %s\n" % (storage_type)) 
