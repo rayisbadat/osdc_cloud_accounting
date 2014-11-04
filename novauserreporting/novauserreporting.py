@@ -199,7 +199,6 @@ class NovaUserReporting:
         try:
             conn = self.db_connect(self.settings['novadb'])
             s = text(query)
-            pprint.pprint( s )
             results = conn.execute(s)
         except SQLAlchemyError as e:
             sys.stderr.write("ERROR-NUR: Erroring querying the databases: %s\n" % (e) )
@@ -372,7 +371,6 @@ class NovaUserReporting:
     
             try:
                 s = text(query)
-                print "Cinder:\n%s" %(query)
                 results = conn.execute(s)
             except SQLAlchemyError as e:
                 sys.stderr.write("ERROR-NUR: Erroring querying the databases: %s\n" % (e) )
@@ -476,7 +474,6 @@ class NovaUserReporting:
                 tenant_id=tenant_id, 
                 user_id=user_id,
                 percentile=self.settings['du_percentile'] )
-            pprint.pprint(du)
 
         else:
             sys.stderr.write("ERROR: How did you get here: %s\n" % (storage_type)) 
@@ -498,7 +495,6 @@ class NovaUserReporting:
         #Loop through tenants
         for tenant in self.tenants:
             if tenant.name in self.settings['ignore_tenants'].split(','):
-                print "MOO"
                 continue
 
             #Find users in a tenant
@@ -525,12 +521,10 @@ class NovaUserReporting:
                         blk_du = temp_du
                     else:
                         du += temp_du
-                sys.stderr.write( "Tenant: %s, USER: %s,core=%s,obj=%s,blk=%s,type=%s\n" %(tenant.name,user.name, corehrs,obj_du, blk_du, storage_type))
+                if self.debug:
+                    sys.stderr.write( "Tenant: %s, USER: %s,core=%s,obj=%s,blk=%s,type=%s\n" %(tenant.name,user.name, corehrs,obj_du, blk_du, storage_type))
                 self.cloud_users.setdefault(user.name, []).append( UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du, obj_du=obj_du, blk_du=blk_du) )
-                for cloud_user, stats in self.cloud_users.items():
-                    if cloud_user == user.name:
-                        pprint.pprint(cloud_user)
-                        pprint.pprint(vars(stats[0]))
+
 
     def gen_csv(self):
         self.csv = []
@@ -607,6 +601,8 @@ class NovaUserReporting:
 
             #This is stupid but until we have better handling on multi tenant users, its kludged to work
             du = stats[0].du
+            blk_du = stats[0].blk_du
+            obj_du = stats[0].obj_du
             corehrs = 0
             for per_tenant_corehrs in stats:
                 corehrs += per_tenant_corehrs.corehrs
@@ -641,7 +637,7 @@ class NovaUserReporting:
                             corehrs=corehrs, 
                             du=du,
                             blk_du=blk_du,
-                            obj_du=blk_du,
+                            obj_du=obj_du,
                             start_date=self.start_time, 
                             end_date=self.end_time)
                         if case_id is None:
