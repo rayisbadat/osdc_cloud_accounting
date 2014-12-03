@@ -23,6 +23,7 @@ import re
 
 import keystoneclient.v2_0.client as ksclient
 import swiftclient
+import keystoneclient.openstack.common.apiclient.exceptions
 
 from sqlalchemy import create_engine, insert, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -105,7 +106,11 @@ class RepCephOSdu:
         os_creds['tenant_name'] = tenant_name.translate(None,strip)
         os_creds['authurl'] = auth_url.translate(None,strip)
 
-        keystone = ksclient.Client(username=os_creds['user'], password=password.translate(None,strip), auth_url=os_creds['authurl'], tenant_name=os_creds['tenant_name'])
+        try:
+            keystone = ksclient.Client(username=os_creds['user'], password=password.translate(None,strip), auth_url=os_creds['authurl'], tenant_name=os_creds['tenant_name'])
+        except keystoneclient.apiclient.exceptions.Unauthorized:
+            raise Exception("User: %s Tenant: %s disabled in keystone can not load disk usage"%(username, tenant_name))
+
         auth_token=keystone.auth_token
         object_store_url=str(keystone.service_catalog.get_urls(service_type='object-store', endpoint_type='internal')[0])
         os_creds['preauthtoken'] = keystone.auth_token
@@ -286,7 +291,12 @@ if __name__ == "__main__":
             username=novarc_creds['username']
             force_updates_for=user_repcephosddu.force_updates_for
 
-            swift_du = user_repcephosddu.get_swift_du_for_tenant( debug=debug, **novarc_creds)
+            try:
+                swift_du = user_repcephosddu.get_swift_du_for_tenant( debug=debug, **novarc_creds)
+            except Exception as e:
+               sys.stderr.write("WARN: %s\n" % e) 
+               sys.exit(1)
+
             if debug:
                 print "%s = %s" % (str(swift_du), str(novarc_creds))
 
