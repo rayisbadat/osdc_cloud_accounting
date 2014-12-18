@@ -71,11 +71,11 @@ if __name__ == "__main__":
                     fields['storage_quota'] = settings['general']['storage_quota']
 
                 #originally designed to only take TB, this give us ability to create smaller.
-                fields['storage_quota'] = str(fields['storage_quota']*1024)
+                fields['storage_quota'] = int(float(fields['storage_quota']) * 1024)
 
 
                 #Assemble command
-                print "Creating new user:  %s" % username
+                print "Creating new user:  %s" % (username)
                 cmd = [
                     '/usr/local/sbin/create-user.sh',
                     fields['Name'],
@@ -84,7 +84,7 @@ if __name__ == "__main__":
                     method,
                     settings['tukey']['cloud'],
                     fields['core_quota'],
-                    fields['storage_quota'] + 'GB',
+                    "%sGB" % fields['storage_quota'],
                 ]
                 try:
                     if printcsv:
