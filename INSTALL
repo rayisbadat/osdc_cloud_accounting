@@ -1,9 +1,70 @@
- * Create virtualenv
- * apt-get install libxml2-dev libxslt-dev libmysqlclient-dev
- * pip install sqlalchemy
- * pip install MySQL-python
- * git clone https://github.com/openstack/python-keystoneclient.git && cd python-keystoneclient  && python setup.py install
- * git clone https://github.com/openstack/python-novaclient.git  && cd python-novaclient && python setup.py install
- * Install beatbox from git  : https://github.com/superfell/Beatbox 
- * Loop through each library sub folder and python setup.py install   
+Deploy Account Maangement Software to a cloud
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Work with phillis to get tukey setup (We need to work with her on these steps)
+* Pull source code from github.  Use the pdcv3 branch for now, until we swap legacy clouds to a different branch and fold into the main branch ::
+    
+    apt-get install git
+    cd /usr/loca/src/
+    git clone git@github.com:LabAdvComp/osdc_cloud_accounting.git.
+
+* Create Virtual environnent  named .SFACCT by convention ::
+    
+    apt-get install python-virtualenv
+    cd /usr/local/src 
+    virtualenv --system-site-package .SFACCT
+    source /usr/local/src/.SFACCT/bin/activate
+    
+* Install prereqs ::
+
+    apt-get install python-virtualenv libxml2-dev libxslt-dev libmysqlclient-dev python-dev
+    pip install sqlalchemy
+    pip install MySQL-python    
+    apt-get install python-novaclient python-keystoneclient #  If deploying to an outdated ESSEX system pull from git and install)
+    cd /usr/loca/src/
+    git clone  https://github.com/superfell/Beatbox
+    cd Beatbox && python setup.py install
+    
+* Install the cloud accounting software:
+
+    cd /usr/local/src/osdc_cloud_accounting/
+    git checkout pdcv3
+    for x in $( find -maxdepth 2 -name setup.py -printf "%h\n" ); 
+    do 
+        cd $x; python setup.py install; 
+    done
+        
+* Create the conf file dir  /etc/osdc_cloud_accounting and populate with files from EXAMPLE 
+    * Need password for reporting user on cloud controller's mysql.
+    * The salesforce user and password is an API token, if we need another we can generate.
+    * set [novauserreporting] campaign=XXX where XXX is the name as typed in Salesforce.
+    * set [novauserreporting] case=XXX where XXX is the name as typed in Salesforce.
+    
+* Init the mysql database and grant access to the needed tables in openstack dbs. ::
+
+    CREATE DATABASE storage_use;
+    USE storage_use;
+    CREATE TABLE `${CLOUD}_object` (   `date` datetime DEFAULT NULL,   `path` text,   `value` float DEFAULT NULL );
+    CREATE TABLE `${CLOUD}_block` (   `date` datetime DEFAULT NULL,   `path` text,   `value` float DEFAULT NULL );
+    GRANT USAGE ON *.* TO 'reporting'@'%' IDENTIFIED BY 'XXXXXXXXXXXX';
+    GRANT ALL PRIVILEGES ON `storage_use`.* TO 'reporting'@'%';
+    GRANT SELECT ON `nova`.`instance_types` TO 'reporting'@'%';
+    GRANT SELECT ON `nova`.`instances` TO 'reporting'@'%';
+    GRANT SELECT ON `cinder`.`volumes` TO 'reporting'@'%';
+    GRANT SELECT on keystone.* to 'reporting'@'%';    
+    
+* Most of the user management at the cli level is via cpu, install and configure the conf file to match ldap schema/settings.
+    * Basically set the dn, admin user, admin password, and the uid and gid constraints.  Try to keep them unique across all clouds incase you unify ldap across multiple infrastructures.
+* You may need to create the user/group schemea in slapd. ::
+
+    echo '
+        dn: ou=people,dc=ZZZZ,dc=YYYY,dc=XXXX
+        ou: People
+        objectClass: organizationalUnit
+
+        dn: ou=group,dc=ZZZZ,dc=YYYY,dc=XXXX
+        ou: Group
+        objectClass: organizationalUnit
+    ' | ldapmodify -a -x -w $(cat /etc/pam_ldap.secret) -D "cn=admin,dc=ZZZZ,dc=YYYY,dc=XXXX"
+
 
