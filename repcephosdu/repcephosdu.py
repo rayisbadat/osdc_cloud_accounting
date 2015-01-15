@@ -160,6 +160,9 @@ class RepCephOSdu:
     def write_to_db(self,table=None, username=None, tenant_name=None,  du=None, debug=None ):
         """Push it out to a file"""
 
+	if self.debug:
+		debug=True
+
         conn = self.db_connect(self.settings['repcephosdu']['db_database'])
         insert = []
         insert.append({'date': self.now_time.strftime(self.settings['general']['timeformat']),
@@ -167,6 +170,10 @@ class RepCephOSdu:
                 'tenant_name': tenant_name,
                 'value': int(du)
             })
+
+	if debug:
+		print "DEBUG: insert %s" %(insert)
+
         conn.execute(table.insert(), insert)
 
     def get_percentile_du(self, start_date=None, end_date=None, username=None, tenant_name=None, path=None, debug=None, percentile=95):
@@ -204,6 +211,12 @@ class RepCephOSdu:
             conn = self.db_connect(self.settings['repcephosdu']['db_database'])
             s = text(my_query)
             results = conn.execute(s).fetchall()
+
+        except SQLAlchemyError as e:
+            sys.stderr.write("Erroring querying the databases in %s: %s\n" %(__name__,str(e)))
+            sys.exit(1)
+
+	try:
             if results:
                 for x in results:
                     dus.append(float(x[0]))
@@ -215,10 +228,8 @@ class RepCephOSdu:
                 return result
             else:
                 return 0
-
-        except SQLAlchemyError:
-            sys.stderr.write("Erroring querying the databases\n")
-            sys.exit(1)
+	except Exception as e:
+		sys.stderr.write( "Unknown error in %s: %s"  %(__name__,str(e)))
 
     def is_quota_leader(self, tenant_name, username):
         """ Only update for people who are makred leaders in SF.  Prevents dulpicate entries """
@@ -307,6 +318,7 @@ if __name__ == "__main__":
             if update:
 
                 if user_repcephosddu.is_quota_leader(tenant_name=tenant_name, username=username):
+                    print "RAY>>> Update Quota Leader: %s:%s=%s" % (username,tenant_name, swift_du)
                     user_repcephosddu.update_db(username=username, tenant_name=tenant_name,  du=swift_du, debug=debug )
                     if debug:
                         print "Update Quota Leader: %s:%s=%s" % (username,tenant_name, swift_du)

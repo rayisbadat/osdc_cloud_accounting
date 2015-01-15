@@ -35,7 +35,7 @@ EMAIL=$4
 HOME_DIR=$5
 if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$EMAIL" ] || [ -z "$HOME_DIR" ] || [ -z "$TENANT" ]
 then
-	echo "Usage: $0 Username Password Email Home_Directory_Path STORAGE_QUOTA"
+	echo "Usage: $0 Username Tenant Password Email Home_Directory_Path STORAGE_QUOTA"
 	exit 1
 fi
 
@@ -69,8 +69,10 @@ echo "export OS_AUTH_URL=\"${IDENTITY_URL}/\"" >> $credential_file
 
 #EUCA
 
-INFO_STRING="--os_username $USERNAME --os_password $PASSWORD --os_tenant_name $USERNAME"
-NOVA_INFO_STRING="--username $USERNAME --password $PASSWORD --tenant_name $USERNAME"
+INFO_STRING="--os-username $USERNAME --os-password $PASSWORD --os-tenant-name $USERNAME"
+#NOVA_INFO_STRING="--username $USERNAME --password $PASSWORD --tenant_name $USERNAME"
+#Apparently this changed between versions
+NOVA_INFO_STRING=$INFO_STRING
 
 CREDS=$(/usr/bin/keystone $INFO_STRING ec2-credentials-create 2>/dev/null )
 

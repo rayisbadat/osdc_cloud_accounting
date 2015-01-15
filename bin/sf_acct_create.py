@@ -12,9 +12,12 @@ from sqlalchemy import create_engine, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
 def tenant_exist(tenant):
+    print "tenant_exist(" + tenant + ")" 
     """ Check if tenant exists """
     try:
         subprocess.check_call( ['/usr/local/sbin/does_tenant_exist.sh', tenant ], stdout=open(os.devnull, 'wb') )
+	print "The tenant exists"
+	print tenant
         return True
     except subprocess.CalledProcessError, e:
         return False
@@ -35,6 +38,7 @@ def create_tenant(tenant, printdebug=None, run=None):
 
 
 def create_user(username, fields, printdebug=None,run=None):
+    print "create_user(" + username + "," + str(fields) + ")"
     """ Call create user script """
     if fields['Authentication_Method'] == 'OpenID':
         method = 'openid'
@@ -64,6 +68,7 @@ def create_user(username, fields, printdebug=None,run=None):
             pprint.pprint(cmd)
             pprint.pprint(fields)
         if run:
+            print(str(cmd))
             result = subprocess.check_call( cmd )
             return True
         else:
@@ -276,7 +281,13 @@ if __name__ == "__main__":
     #Load up a list of the users in SF that are approved for this cloud
     sfocc.login(username=settings['salesforceocc']['sfusername'], password=settings['salesforceocc']['sfpassword'])
     contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['general']['cloud'],  statuses=["Approved User", "Application Pending"])
+
+    print "======="
+    print "sfocc.get_approved_users(campaign_name="+settings['general']['cloud']+", contacts="+", ".join(contacts.keys())+")"
+    
     members_list = sfocc.get_approved_users(campaign_name=settings['general']['cloud'], contacts=contacts)
+
+    print members_list
 
     if printdebug:
         print "DEBUG: contacts from SF"
@@ -370,7 +381,7 @@ if __name__ == "__main__":
                 if fields['object_storage_quota']:
                     set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], printdebug=printdebug,run=run)
                 if fields['block_storage_quota']:
-                    set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['object_storage_quota'], printdebug=printdebug,run=run)
+                    set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], printdebug=printdebug,run=run)
 
    
     #Lock users

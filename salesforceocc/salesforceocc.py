@@ -266,16 +266,16 @@ class SalesForceOCC:
                 WHERE CampaignId = '%s'
                 """ % (campaign_id)
             field_indexer = self.objectNS.Block_Storage_Quota__c
-            #ceph wants fields in bytes
-            multiplier = 2**40
+            #cinder fields want in GB
+            multiplier = 2**10
         elif field == 'object_storage':
             query_campaign_members_field = """SELECT ContactId, Object_Storage_Quota__c
                 FROM CampaignMember
                 WHERE CampaignId = '%s'
                 """ % (campaign_id)
             field_indexer = self.objectNS.Object_Storage_Quota__c
-            #cinder fields want in GB
-            multiplier = 1024
+            #ceph wants fields in bytes
+            multiplier = 2**40
         elif field == 'leader':
             query_campaign_members_field = """SELECT ContactId, Leader_Set_Quotas__c
                 FROM CampaignMember
