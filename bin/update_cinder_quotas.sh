@@ -18,6 +18,8 @@ else
     exit 1
 fi
 
+cmd_ran=0
+
 while getopts "t:v:g:s:" opt; do
   case "$opt" in
     t)
@@ -31,12 +33,15 @@ while getopts "t:v:g:s:" opt; do
 	;;
     v)
         cinder quota-update --volumes $OPTARG $tennant_id &> /dev/null
+        cmd_ran=1
       ;;
     g)
         cinder quota-update --gigabytes $OPTARG $tennant_id &> /dev/null
+        cmd_ran=1
       ;;
     s)
         cinder quota-update --snapshots $OPTARG $tennant_id &> /dev/null
+        cmd_ran=1
       ;;
     *)
 	echo "${opt}"
@@ -58,7 +63,7 @@ then
 fi
 
 
-if [ "$tennant_id" != "" ]
+if [[ "$tennant_id" != "" ]] && [[ $cmd_ran -eq 0 ]]
 then 
 	cinder quota-show $tennant_id
 	exit 0

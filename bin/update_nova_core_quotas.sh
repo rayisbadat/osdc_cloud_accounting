@@ -1,5 +1,5 @@
 #!/bin/bash
-USERNAME=${1}
+TENANT_NAME=${1}
 CORES=${2}
 
 if [ -e /etc/osdc_cloud_accounting/admin_auth ]
@@ -19,17 +19,17 @@ else
 fi
 
 
-if [ -z "$USERNAME" ]
+if [ -z "$TENANT_NAME" ]
 then
-    echo "Usage: $0 USERNAME [cores]"
+    echo "Usage: $0 TENANT_NAME [cores]"
 	exit 1
 fi
-tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep $USERNAME | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
+tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep $TENANT_NAME | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
 
 
 if [ "$tennant_id" == "" ]
 then
-    echo "$0 Error: No user/tennant found for $USERNAME"
+    echo "$0 Error: No user/tennant found for $TENANT_NAME"
     exit 1
 fi
 
@@ -45,7 +45,7 @@ instances=${CORES}
 
 if [ "$tennant_id" == "" ]
 then
-    echo "$0 Error: No user/tennant found for $USERNAME"
+    echo "$0 Error: No user/tennant found for $TENANT_NAME"
     exit 1
 fi
 

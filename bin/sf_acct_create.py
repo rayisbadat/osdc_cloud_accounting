@@ -91,6 +91,14 @@ def set_quota(username, tenant, quota_type, quota_value, printdebug=None,run=Non
                 "%s" % tenant,
                 "%s" % quota_value,
             ]
+
+    #I did a bad thin in this shell script, we used to map tenant=username.
+    #So the script asks for username and not tenant
+    elif quota_type == 'core':
+        cmd = [ '/usr/local/sbin/update_nova_core_quotas.sh',
+                '%s' % tenant,
+                '%s' % quota_value,
+            ]
     else:
         return False 
 
@@ -366,21 +374,43 @@ if __name__ == "__main__":
                 print "INFO: Creating users %s" % username
                 user_created = create_user(username=username,fields=fields, printdebug=printdebug, run=run)
 
-            #Set quota if leader
-            if user_created and fields['quota_leader']:
-                print "INFO: Setting Quotas"
-                if fields['object_storage_quota']:
-                    set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], printdebug=printdebug,run=run)
-                if fields['block_storage_quota']:
-                    set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], printdebug=printdebug,run=run)
+    #Apply Quotas
+    print "Setting Quotas"
+    for username, fields in members_list.items():
+        #Nih style changes....i am doing this wrong
+        if nih_file:
+            if fields['eRA_Commons_username'].upper()  in nih_approved_users:
+                fields['username'] = fields['eRA_Commons_username'].upper()
+                username = fields['eRA_Commons_username'].upper()
+                fields['login_identifier']="urn:mace:incommon:nih.gov!https://bionimbus-pdc.opensciencedatacloud.org/shibboleth!%s"%(username)
+            else:
+                continue
 
+        if printdebug:
+            print "DEBUG: Username from SF = %s" % (username) 
+
+        try:
+            user_exists = pwd.getpwnam(username)
+        except:
+            user_exists = None
+
+        #Set storage quota if leader
+        if user_exists and fields['quota_leader']:
+            if fields['object_storage_quota']:
+                set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], printdebug=printdebug,run=run)
+            if fields['block_storage_quota']:
+                set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], printdebug=printdebug,run=run)
+
+        #Set core quota
+        if user_exists and fields['core_quota']:
+            set_quota(username=username, tenant=fields['tenant'], quota_type="core", quota_value=fields['core_quota'], printdebug=printdebug,run=run)
    
     #Lock users
+    print "Locking/Unlocking Users:"
     try:
         starting_uid=settings['general']['starting_uid']
     except KeyError:
         starting_uid=1500
-    print "Locking/Unlocking Users:"
     toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,printdebug=printdebug,) 
 
     #Fix the tenants for manged groups
