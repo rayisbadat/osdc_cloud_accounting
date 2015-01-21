@@ -400,10 +400,8 @@ if __name__ == "__main__":
                 set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], printdebug=printdebug,run=run)
             if fields['block_storage_quota']:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], printdebug=printdebug,run=run)
-
-        #Set core quota
-        if user_exists and fields['core_quota']:
-            set_quota(username=username, tenant=fields['tenant'], quota_type="core", quota_value=fields['core_quota'], printdebug=printdebug,run=run)
+            if fields['core_quota']:
+                set_quota(username=username, tenant=fields['tenant'], quota_type="core", quota_value=fields['core_quota'], printdebug=printdebug,run=run)
    
     #Lock users
     print "Locking/Unlocking Users:"
