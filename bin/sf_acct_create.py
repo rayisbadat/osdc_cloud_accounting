@@ -284,9 +284,7 @@ if __name__ == "__main__":
 
     #Load up a list of the users in SF that are approved for this cloud
     sfocc.login(username=settings['salesforceocc']['sfusername'], password=settings['salesforceocc']['sfpassword'])
-    print "DEBUG: RAY1"
     contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['salesforceocc']['campaign'],  statuses=["Approved User", "Application Pending"])
-    print "DEBUG: RAY2"
     members_list = sfocc.get_approved_users(campaign_name=settings['salesforceocc']['campaign'], contacts=contacts)
 
     if debug:
