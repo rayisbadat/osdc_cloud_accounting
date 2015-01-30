@@ -148,6 +148,10 @@ class SalesForceOCC:
             Email, Name, OCC_Y_Server_Username__c, Phone, Authentication_Method__c, \
             Authentication_ID__c"
         contacts = self.svc.retrieve(fields, "Contact", contact_ids)
+	#Because Beatbox returns a instance if one result, or a list if more then one :(
+	if type(contacts) is not list:
+		contacts=[contacts]
+ 
         contacts_dict = {}
         contact_statuses = self.get_campaign_members_status(campaign_name=campaign_name)
         contact_quotas_core = self.get_campaign_members_info(campaign_name=campaign_name,field='core')
