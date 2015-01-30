@@ -20,7 +20,7 @@ def tenant_exist(tenant):
         return False
 
 
-def create_tenant(tenant, printdebug=None, run=None):
+def create_tenant(tenant, debug=None, run=None):
     """ call the bash scripts to create tenants """
     if run:
         try:
@@ -34,7 +34,7 @@ def create_tenant(tenant, printdebug=None, run=None):
         return True
 
 
-def create_user(username, fields, printdebug=None,run=None):
+def create_user(username, fields, debug=None,run=None):
     """ Call create user script """
     if fields['Authentication_Method'] == 'OpenID':
         method = 'openid'
@@ -60,7 +60,7 @@ def create_user(username, fields, printdebug=None,run=None):
         settings['tukey']['cloud'],
     ]
     try:
-        if printdebug:
+        if debug:
             pprint.pprint(cmd)
             pprint.pprint(fields)
         if run:
@@ -75,7 +75,7 @@ def create_user(username, fields, printdebug=None,run=None):
         return False
 
 
-def set_quota(username, tenant, quota_type, quota_value, printdebug=None,run=None):
+def set_quota(username, tenant, quota_type, quota_value, debug=None,run=None):
     """ Set the quota """
    
     if quota_type == 'cinder':
@@ -104,7 +104,7 @@ def set_quota(username, tenant, quota_type, quota_value, printdebug=None,run=Non
 
     #Set quota
     try:
-        if printdebug:
+        if debug:
             pprint.pprint(cmd)
         if run:
             result = subprocess.check_call( cmd )
@@ -115,15 +115,15 @@ def set_quota(username, tenant, quota_type, quota_value, printdebug=None,run=Non
         return False
 
 
-def toggle_user_locks(approved_members=None, starting_uid=1500, printdebug=None):
+def toggle_user_locks(approved_members=None, starting_uid=1500, debug=None):
     for p in pwd.getpwall():
-        if printdebug:
+        if debug:
             print "DEBUG: User on System %s:%s"%(p.pw_name,p.pw_uid)
 
         if p.pw_name in approved_members:
             operation="unlock"
         elif p.pw_uid < starting_uid:
-            if printdebug:
+            if debug:
                 print "DEBUG: Skipping reserved user %s:%s"%(p.pw_name,p.pw_uid)
             continue
         elif p.pw_name=="nobody":
@@ -138,7 +138,7 @@ def toggle_user_locks(approved_members=None, starting_uid=1500, printdebug=None)
              operation,
         ]
         try:
-            if printdebug:
+            if debug:
                 pprint.pprint(cmd)
             if run:
                 result = subprocess.check_call( cmd )
@@ -210,7 +210,7 @@ def remove_member_from_tenant(tenant=None, users=None, role="_member_"):
             sys.stderr.write("%s\n" % e.output)
     
 
-def add_member_to_tenant(tenant=None, users=None, role="_member_", printdebug=None):
+def add_member_to_tenant(tenant=None, users=None, role="_member_", debug=None):
     """ Add users to the tenant """  
     for user in users:
         print "INFO: Adding user %s to tenant %s" % (user, tenant)
@@ -221,7 +221,7 @@ def add_member_to_tenant(tenant=None, users=None, role="_member_", printdebug=No
             "--tenant=%s"%(tenant),
             "--role=%s"%(role),
         ]
-        if printdebug:
+        if debug:
             pprint.pprint( cmd )
         try:
             result = subprocess.check_call( cmd )
@@ -235,7 +235,7 @@ if __name__ == "__main__":
 
     #Load in the CLI flags
     run = True
-    printdebug = False
+    debug = False
     nih_file = False
     approved_members = set()
 
@@ -246,7 +246,7 @@ if __name__ == "__main__":
         sys.exit(2)
     for opt, arg in opts:
         if opt in ("--debug"):
-            printdebug = True
+            debug = True
         elif opt in ("--norun"):
             run = False
         elif opt in ("--nihfile"):
@@ -276,7 +276,7 @@ if __name__ == "__main__":
         #Setting to set() since we need to do intersections and differences
         for managed_tenant in settings['accounts']['managed_tenants']:
             managed_tenants[managed_tenant]=set()
-            if printdebug:
+            if debug:
                 print "DEBUG: created managed tenant: %s" % (managed_tenant)
                 pprint.pprint( managed_tenants )
     except:
@@ -284,11 +284,12 @@ if __name__ == "__main__":
 
     #Load up a list of the users in SF that are approved for this cloud
     sfocc.login(username=settings['salesforceocc']['sfusername'], password=settings['salesforceocc']['sfpassword'])
-    contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['general']['cloud'],  statuses=["Approved User", "Application Pending"])
+    print "DEBUG: RAY1"
+    contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['salesforceocc']['campaign'],  statuses=["Approved User", "Application Pending"])
+    print "DEBUG: RAY2"
+    members_list = sfocc.get_approved_users(campaign_name=settings['salesforceocc']['campaign'], contacts=contacts)
 
-    members_list = sfocc.get_approved_users(campaign_name=settings['general']['cloud'], contacts=contacts)
-
-    if printdebug:
+    if debug:
         print "DEBUG: contacts from SF"
         pprint.pprint( contacts ) 
         print "DEBUG: members from SF"
@@ -300,7 +301,7 @@ if __name__ == "__main__":
     #phsid is also important eventually
     if nih_file:
         
-        if printdebug:
+        if debug:
             print "DEBUG: maned_tenants:" 
             pprint.pprint(settings['accounts']['managed_tenants'])
 
@@ -342,7 +343,7 @@ if __name__ == "__main__":
             else:
                 continue
 
-        if printdebug:
+        if debug:
             print "DEBUG: Username from SF = %s" % (username) 
 
         #At some point we need to disable inactive users
@@ -359,7 +360,7 @@ if __name__ == "__main__":
                     if fields['quota_leader']:
                         #Will create the new tenant
                         print "INFO: Creating new tenant %s" % (fields['tenant'])
-                        if create_tenant(tenant=fields['tenant'], printdebug=printdebug,run=run):
+                        if create_tenant(tenant=fields['tenant'], debug=debug,run=run):
                             add_member_to_tenant(role='quota_leader', tenant=fields['tenant'],users=[username] )
                             pass
                         else:
@@ -372,7 +373,7 @@ if __name__ == "__main__":
             #Create the user
             if username:
                 print "INFO: Creating users %s" % username
-                user_created = create_user(username=username,fields=fields, printdebug=printdebug, run=run)
+                user_created = create_user(username=username,fields=fields, debug=debug, run=run)
 
     #Apply Quotas
     print "Setting Quotas"
@@ -386,7 +387,7 @@ if __name__ == "__main__":
             else:
                 continue
 
-        if printdebug:
+        if debug:
             print "DEBUG: Username from SF = %s" % (username) 
 
         try:
@@ -397,11 +398,11 @@ if __name__ == "__main__":
         #Set storage quota if leader
         if user_exists and fields['quota_leader']:
             if fields['object_storage_quota']:
-                set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], printdebug=printdebug,run=run)
+                set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], debug=debug,run=run)
             if fields['block_storage_quota']:
-                set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], printdebug=printdebug,run=run)
+                set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], debug=debug,run=run)
             if fields['core_quota']:
-                set_quota(username=username, tenant=fields['tenant'], quota_type="core", quota_value=fields['core_quota'], printdebug=printdebug,run=run)
+                set_quota(username=username, tenant=fields['tenant'], quota_type="core", quota_value=fields['core_quota'], debug=debug,run=run)
    
     #Lock users
     print "Locking/Unlocking Users:"
@@ -409,7 +410,7 @@ if __name__ == "__main__":
         starting_uid=settings['general']['starting_uid']
     except KeyError:
         starting_uid=1500
-    toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,printdebug=printdebug,) 
+    toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,debug=debug,) 
 
     #Fix the tenants for manged groups
     #csv_tenant_members = 
@@ -431,7 +432,7 @@ if __name__ == "__main__":
         #We need to add these users to the tenant
         additional_tenant_members = approved_tenant_members.difference( valid_tenant_members ) 
 
-        if printdebug:
+        if debug:
             print tenant_name
             pprint.pprint( approved_tenant_members ) 
             pprint.pprint( valid_tenant_members ) 
