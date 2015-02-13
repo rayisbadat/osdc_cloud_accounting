@@ -312,7 +312,7 @@ class SalesForceOCC:
                     elif contact_field == "" or contact_field == "None" or contact_field == None:
                         contacts_field[contact_id]= None
                     elif re.match("^\d+?\.\d+?$", contact_field):
-                            contacts_field[contact_id] = int( float(contact_field) * multiplier )
+                            contacts_field[contact_id] = float(contact_field) * multiplier 
                     else:
                         contacts_field[contact_id]=contact_field
                 else:
