@@ -237,7 +237,7 @@ class SalesForceOCC:
                 contact_id = str(campaign_member_quota[self.objectNS.ContactId])
                 contact_quota = str(campaign_member_quota[quota_indexer])
                 if contact_quota:
-                    contacts_quota[contact_id] = int(float(contact_quota))
+                    contacts_quota[contact_id] = float(contact_quota)
                 else:
                     contacts_quota[contact_id] = None
             except KeyError:

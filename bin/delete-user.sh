@@ -48,7 +48,7 @@ remove_from_role () {
         echo "ERROR: Can not establish tenan_id of user: $USERNAME"
     fi
 
-    for role in $( keystone role-list | grep -i member | cut -f2 -d " " )
+    for role in $( keystone role-list | cut -f2 -d " " )
     do
         keystone user-role-remove --tenant $tenant --user $user --role $role 2>/dev/null 
     done

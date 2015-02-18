@@ -63,6 +63,7 @@ if __name__ == "__main__":
                     login_identifier = fields['login_identifier']
 
                 
+                print ">> %s => %s" %( fields['storage_quota'], int(float(fields['storage_quota'])  ) )
                 #I am bad at the None checking and convert it to a string at one point
                 #convert none to default
                 if fields['core_quota'] == 'None' or fields['core_quota'] == None:
