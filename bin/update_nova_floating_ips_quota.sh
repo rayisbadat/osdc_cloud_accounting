@@ -40,4 +40,5 @@ then
     exit 0
 fi
 
-nova-manage account quota --project=${tennant_id} --key=floating_ips --value=$IPS #&>/dev/null
+ips_int=$(awk  "BEGIN { rounded = sprintf(\"%.0f\", $IPS); print rounded }")
+nova-manage account quota --project=${tennant_id} --key=floating_ips --value=$ips_int #&>/dev/null
