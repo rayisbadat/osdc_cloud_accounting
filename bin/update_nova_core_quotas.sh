@@ -39,8 +39,9 @@ then
     exit 0
 fi
 
-ram=$((2048*$CORES))
-instances=${CORES}
+cores_int=$(awk  "BEGIN { rounded = sprintf(\"%.0f\", $CORES); print rounded }")
+ram=$((2048*$cores_int))
+instances=${cores_int}
 
 if [ "$tennant_id" == "" ]
 then
