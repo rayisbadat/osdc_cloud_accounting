@@ -40,4 +40,5 @@ then
     exit 0
 fi
 
-nova quota-update  --floating_ips $IPS  ${tennant_id} #&>/dev/null
+ips_int=$(awk  "BEGIN { rounded = sprintf(\"%.0f\", $IPS); print rounded }")
+nova quota-update  --floating_ips $ips_int  ${tennant_id} #&>/dev/null

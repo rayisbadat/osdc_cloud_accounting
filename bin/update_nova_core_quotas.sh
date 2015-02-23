@@ -40,8 +40,9 @@ then
     exit 0
 fi
 
-ram=$((3*1024*$CORES))
-instances=${CORES}
+cores_int=$(awk  "BEGIN { rounded = sprintf(\"%.0f\", $CORES); print rounded }")
+ram=$((2048*$cores_int))
+instances=${cores_int}
 
 if [ "$tennant_id" == "" ]
 then
@@ -50,7 +51,7 @@ then
 fi
 
 
-nova quota-update  --cores $CORES $tennant_id # &>/dev/null
+nova quota-update  --cores $cores_int $tennant_id # &>/dev/null
 nova quota-update  --ram $ram $tennant_id # &>/dev/null
 nova quota-update  --instances $instances $tennant_id # &>/dev/null
 nova quota-update  --fixed-ips $instances $tennant_id # &>/dev/null
