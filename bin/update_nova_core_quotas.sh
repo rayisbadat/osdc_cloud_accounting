@@ -49,7 +49,7 @@ then
     exit 1
 fi
 
-nova-manage account quota --project=${tennant_id} --key=cores --value=$CORES &>/dev/null
+nova-manage account quota --project=${tennant_id} --key=cores --value=$cores_int &>/dev/null
 nova-manage account quota --project=${tennant_id} --key=ram --value=$ram &>/dev/null
 nova-manage account quota --project=${tennant_id} --key=instances --value=$instances &>/dev/null
 nova-manage account quota --project=${tennant_id} --key=fixed_ips --value=$instances &>/dev/null
