@@ -25,7 +25,7 @@ then
     exit 1
 fi
 
-tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep $USERNAME | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
+tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep " $USERNAME " | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
 
 
 if [ "$tennant_id" == "" ]
