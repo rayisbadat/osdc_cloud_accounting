@@ -24,7 +24,7 @@ then
     echo "Usage: $0 TENANT_NAME [cores]"
 	exit 1
 fi
-tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep $TENANT_NAME | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
+tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep " $TENANT_NAME " | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
 
 
 if [ "$tennant_id" == "" ]
