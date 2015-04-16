@@ -237,10 +237,12 @@ if __name__ == "__main__":
     run = True
     debug = False
     nih_file = False
+    tukey = True
     approved_members = set()
+    set_ceph_quota = True
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile="])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota"])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -252,6 +254,11 @@ if __name__ == "__main__":
         elif opt in ("--nihfile"):
             nih_file = arg
             nih_approved_users = {}
+        elif opt in ("--notukey"):
+            tukey = False
+        elif opt in ("--nocephquota"):
+            set_ceph_quota = False
+	
 
     sfocc = SalesForceOCC()
     #read in settings
@@ -395,7 +402,7 @@ if __name__ == "__main__":
 
         #Set storage quota if leader
         if user_exists and fields['quota_leader']:
-            if fields['object_storage_quota']:
+            if fields['object_storage_quota'] and set_ceph_quota:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], debug=debug,run=run)
             if fields['block_storage_quota']:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], debug=debug,run=run)
