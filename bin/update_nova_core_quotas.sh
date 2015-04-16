@@ -51,7 +51,7 @@ then
 fi
 
 
-nova quota-update  --cores $cores_int $tennant_id # &>/dev/null
-nova quota-update  --ram $ram $tennant_id # &>/dev/null
-nova quota-update  --instances $instances $tennant_id # &>/dev/null
-nova quota-update  --fixed-ips $instances $tennant_id # &>/dev/null
+nova quota-update  --force --cores $cores_int $tennant_id # &>/dev/null
+nova quota-update  --force --ram $ram $tennant_id # &>/dev/null
+nova quota-update  --force --instances $instances $tennant_id # &>/dev/null
+nova quota-update  --force --fixed-ips $instances $tennant_id # &>/dev/null
