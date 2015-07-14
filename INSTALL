@@ -17,10 +17,13 @@ Deploy Account Maangement Software to a cloud
     
 * Install prereqs ::
 
-    apt-get install python-virtualenv libxml2-dev libxslt-dev libmysqlclient-dev python-dev
-    pip install sqlalchemy
-    pip install MySQL-python    
+    apt-get install python-virtualenv libxml2-dev libxslt-dev libmysqlclient-dev python-dev 
     apt-get install python-novaclient python-keystoneclient #  If deploying to an outdated ESSEX system pull from git and install)
+    # There used to be a problem on ubuntu 12.04 and earlier with these pkgs, i think 14.04 work fine.
+    # pip install sqlalchemy
+    # pip install MySQL-python    
+    apt-get install python-sqlalchemy python-mysqldb
+
     cd /usr/loca/src/
     git clone  https://github.com/superfell/Beatbox
     cd Beatbox && python setup.py install
