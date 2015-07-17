@@ -124,7 +124,7 @@ def toggle_user_locks(approved_members=None, starting_uid=1500, debug=None):
             operation="unlock"
         elif p.pw_uid < starting_uid:
             if debug:
-                print "DEBUG: Skipping reserved user %s:%s"%(p.pw_name,p.pw_uid)
+                print "DEBUG: Skipping reserved user %s:%s<%s"%(p.pw_name,p.pw_uid,starting_uid)
             continue
         elif p.pw_name=="nobody":
             continue
@@ -412,7 +412,7 @@ if __name__ == "__main__":
     #Lock users
     print "Locking/Unlocking Users:"
     try:
-        starting_uid=settings['general']['starting_uid']
+        starting_uid=int(settings['general']['starting_uid'])
     except KeyError:
         starting_uid=1500
     toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,debug=debug,) 
