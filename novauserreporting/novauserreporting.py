@@ -3,6 +3,7 @@ import sys
 import getopt
 import ConfigParser
 import pprint
+import math
 
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -322,20 +323,6 @@ class NovaUserReporting:
         #Loop through time period and 
         while start_time < stop_time:
             temp_du = 0
-            #query_base = """SELECT size
-            #            from cinder.volumes where status != 'error' and
-            #            (
-            #                ( terminated_at >= '%s' and terminated_at <= '%s' )
-            #                or
-            #                ( deleted_at >= '%s' and deleted_at <= '%s' )
-            #                or
-            #                ( terminated_at is NULL and deleted_at is NULL and deleted = '0')
-            #            )
-            #            """ % (
-            #                    start_time_str, stop_time_str,
-            #                    start_time_str, stop_time_str,
-            #                )
-
             query_base = """ SELECT size
                         from cinder.volumes where status != 'error' and
                         ( 
@@ -393,7 +380,9 @@ class NovaUserReporting:
         else:
             du = 0
 
-        return du
+        #return du
+        #Cinder operates in base10 GB, we need Base 2 GiB
+        return int( math.ceil( du*(2**30)/(1000**3)) )
 
 
     def get_client(self, client_type, username=None, password=None, tenant=None, url=None):
@@ -447,7 +436,8 @@ class NovaUserReporting:
         du = None
 
         if storage_type == "repquota":
-            unit_power = 20 # Divide result by Power of 2 to convert to GB
+            #Reports in KiboBytes
+            unit_power = 20 # Divide result by Power of 2 to convert to GiB
 
             g = RepQuota(config_file=self.config_file)
             du = g.get_percentile_du(
@@ -458,7 +448,8 @@ class NovaUserReporting:
                 )
 
         elif storage_type == 'object':
-            unit_power = 30 # Divide result by Power of 2 to convert to GB
+            # Reports in Bytes
+            unit_power = 30 # Divide result by Power of 2 to convert to GiB
 
             g = RepCephOSdu(debug=self.debug)
             du = g.get_percentile_du(
@@ -469,6 +460,7 @@ class NovaUserReporting:
                 )
 
         elif storage_type == 'block':
+            # Reports in ????
             unit_power = 0 # Divide result by Power of 2 to convert to GB
             du = self.get_cinder_du_percentile(
                 tenant_id=tenant_id, 
@@ -528,7 +520,7 @@ class NovaUserReporting:
 
     def gen_csv(self):
         self.csv = []
-        self.csv.extend(["User, Core Hours (H), Misc Disk Usage (GB), Object Storage (GB), Block Storage (GB)"])
+        self.csv.extend(["User, Core Hours (H), Misc Disk Usage (GiB), Object Storage (GiB), Block Storage (GiB)"])
         for cloud_user, stats in self.cloud_users.items():
             #self.csv.extend(["%s,%s,%s" % (cloud_user, stats.corehrs, stats.du)])
             #This is stupid but until we have better handling on multi tenant users, its kludged to work
@@ -543,7 +535,7 @@ class NovaUserReporting:
 
 
     def print_csv(self):
-        #print "Tenant, User, Core Hours (H), Disk Usage (GB)"
+        #print "Tenant, User, Core Hours (H), Disk Usage (GiB)"
         for line in self.csv:
             print "%s" % (line)
 
