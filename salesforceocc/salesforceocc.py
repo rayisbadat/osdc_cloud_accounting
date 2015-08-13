@@ -243,7 +243,8 @@ class SalesForceOCC:
             core|storage|object_storage|block_storage|leader are mapped to
             the values in salesforce.  Do to variance in how we report/store
             the old gluster vs new ceph quotas, a multiple is applied to get
-            it into the correct units.  Salesforce is saving them as TB"""
+            it into the correct units.  Salesforce is saving them as TiB,
+            we convert to GiB"""
 
         contacts_field = {}
 
@@ -270,7 +271,7 @@ class SalesForceOCC:
                 WHERE CampaignId = '%s'
                 """ % (campaign_id)
             field_indexer = self.objectNS.Block_Storage_Quota__c
-            #cinder fields want in GB
+            #cinder fields want in GiB
             multiplier = 2**10
         elif field == 'object_storage':
             query_campaign_members_field = """SELECT ContactId, Object_Storage_Quota__c
