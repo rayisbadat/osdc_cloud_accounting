@@ -76,9 +76,11 @@ def create_user(username, fields, debug=None,run=None):
 
 
 def set_quota(username, tenant, quota_type, quota_value, debug=None,run=None):
-    """ Set the quota """
+    """ Set the quota we assume everything is in base 2 units.
+        This should all be handled by salesforceocc long before it gets here"""
    
     if quota_type == 'cinder':
+        # update_cinder_quotas takes quota_value in gigabytes
         cmd = ["/usr/local/sbin/update_cinder_quotas.sh",
                 "-t %s" % tenant,
                 "-g %s" % quota_value,
@@ -86,6 +88,7 @@ def set_quota(username, tenant, quota_type, quota_value, debug=None,run=None):
                 "-s %s" % (10 + quota_value/2),
             ]
     elif quota_type == 'ceph_swift':
+        # Command takes units in bytes
         cmd = ["/usr/local/sbin/update_ceph_quotas.sh",
                 "%s" % username,
                 "%s" % tenant,
@@ -405,6 +408,7 @@ if __name__ == "__main__":
             if fields['object_storage_quota'] and set_ceph_quota:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], debug=debug,run=run)
             if fields['block_storage_quota']:
+                #takes quota in GibaBytes
                 set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], debug=debug,run=run)
             if fields['core_quota']:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="core", quota_value=fields['core_quota'], debug=debug,run=run)
