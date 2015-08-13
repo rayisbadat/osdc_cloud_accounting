@@ -382,7 +382,7 @@ class NovaUserReporting:
 
         #return du
         #Cinder operates in base10 GB, we need Base 2 GiB
-        return int( math.ceil( du*(2**30)/(1000**3)) )
+        return int( math.ceil( du*(1000**3)/(2**30)) )
 
 
     def get_client(self, client_type, username=None, password=None, tenant=None, url=None):
