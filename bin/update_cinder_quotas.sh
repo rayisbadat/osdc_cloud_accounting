@@ -36,7 +36,8 @@ while getopts "t:v:g:s:" opt; do
         cmd_ran=1
       ;;
     g)
-        cinder quota-update --gigabytes $OPTARG $tennant_id &> /dev/null
+        gigabytes=$(python -c "import math; print int(math.ceil($OPTARG*(2**30)/(1000**3)))")
+        cinder quota-update --gigabytes $gigabytes $tennant_id &> /dev/null
         cmd_ran=1
       ;;
     s)
@@ -58,7 +59,7 @@ done
 if [ $OPTIND -eq 1 ]; 
 then 
     echo "No options were passed"; 
-    echo ">> Usage: $0 -t TENANT [-v NUM_VOLUMES] [-g SIZE_IN_GB] [-s NUM_SNAPSHOTS]"
+    echo ">> Usage: $0 -t TENANT [-v NUM_VOLUMES] [-g SIZE_IN_GiB] [-s NUM_SNAPSHOTS]"
     exit 1
 fi
 
@@ -70,6 +71,6 @@ then
 fi
 if [ $OPTIND -lt 3 ]
 then
-      echo ">>>Usage: $0 -t TENANT [-v NUM_VOLUMES] [-g SIZE_IN_GB] [-s NUM_SNAPSHOTS]"
+      echo ">>>Usage: $0 -t TENANT [-v NUM_VOLUMES] [-g SIZE_IN_GiB] [-s NUM_SNAPSHOTS]"
       exit 1
 fi
