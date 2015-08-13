@@ -17,7 +17,7 @@ Deploy Account Maangement Software to a cloud
     
 * Install prereqs ::
 
-    apt-get install python-virtualenv libxml2-dev libxslt-dev libmysqlclient-dev python-dev 
+    apt-get install python-virtualenv libxml2-dev libxslt-dev libmysqlclient-dev python-dev pwgen
     apt-get install python-novaclient python-keystoneclient #  If deploying to an outdated ESSEX system pull from git and install)
     apt-get install python-sqlalchemy python-mysqldb
     #pip install sqlalchemy
@@ -44,12 +44,12 @@ Deploy Account Maangement Software to a cloud
     
 * Init the mysql database and grant access to the needed tables in openstack dbs. ::
 
-    CREATE DATABASE storage_use;
-    USE storage_use;
+    CREATE DATABASE storage;
+    USE storage;
     CREATE TABLE `${CLOUD}_object` (   `date` datetime DEFAULT NULL,   `path` text,   `value` float DEFAULT NULL );
     CREATE TABLE `${CLOUD}_block` (   `date` datetime DEFAULT NULL,   `path` text,   `value` float DEFAULT NULL );
     GRANT USAGE ON *.* TO 'reporting'@'%' IDENTIFIED BY 'XXXXXXXXXXXX';
-    GRANT ALL PRIVILEGES ON `storage_use`.* TO 'reporting'@'%';
+    GRANT ALL PRIVILEGES ON `storage`.* TO 'reporting'@'%';
     GRANT SELECT ON `nova`.`instance_types` TO 'reporting'@'%';
     GRANT SELECT ON `nova`.`instances` TO 'reporting'@'%';
     GRANT SELECT ON `cinder`.`volumes` TO 'reporting'@'%';
