@@ -11,6 +11,30 @@ import  os
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
+
+def create_ceph_s3_creds(tenant, username,  debug=None, run=None):
+    """ Create the s3creds for a the tenant, generally only called for quota leader"""
+
+    cmd = [ '/usr/local/sbin/create_ceph_s3_creds.sh', tenant , username ]
+
+    #Set quota
+    if debug:
+        pprint.pprint(cmd)
+
+    if run:
+        try:
+            subprocess.check_call(cmd, stdout=open(os.devnull, 'wb'))
+            return True
+
+        except subprocess.CalledProcessError, e:
+            sys.stderr.write("Error creating  new rados key for tenant:  %s\n" % tenant )
+            sys.stderr.write("%s\n" % e.output)
+            return False
+
+        else:
+            return True
+
+
 def tenant_exist(tenant):
     """ Check if tenant exists """
     try:
@@ -32,7 +56,6 @@ def create_tenant(tenant, debug=None, run=None):
             return False
     else:
         return True
-
 
 def create_user(username, fields, debug=None,run=None):
     """ Call create user script """
@@ -195,7 +218,7 @@ def db_connect(db):
 
 
         
-def remove_member_from_tenant(tenant=None, users=None, role="_member_"):
+def remove_member_from_tenant(tenant=None, users=None, role="_member_", debug=None, run=None):
     """  Remove users from the tenant """
     for user in users:
         print "INFO: Removing user %s from tenant %s" % (user, tenant)
@@ -206,14 +229,18 @@ def remove_member_from_tenant(tenant=None, users=None, role="_member_"):
             "--tenant=%s"%(tenant),
             "--role=%s"%(role),
         ]
-        try:
-            result = subprocess.check_call( cmd )
-        except subprocess.CalledProcessError, e:
-            sys.stderr.write("Error: Removing  user %s to tenant %s\n" % (username,tenant) )
-            sys.stderr.write("%s\n" % e.output)
-    
+        if debug:
+            pprint.pprint(cmd)
 
-def add_member_to_tenant(tenant=None, users=None, role="_member_", debug=None):
+        if run:
+            try:
+                result = subprocess.check_call( cmd )
+            except subprocess.CalledProcessError, e:
+                sys.stderr.write("Error: Removing  user %s to tenant %s\n" % (username,tenant) )
+                sys.stderr.write("%s\n" % e.output)
+        
+
+def add_member_to_tenant(tenant=None, users=None, role="_member_", debug=None, run=None):
     """ Add users to the tenant """  
     for user in users:
         print "INFO: Adding user %s to tenant %s" % (user, tenant)
@@ -226,12 +253,14 @@ def add_member_to_tenant(tenant=None, users=None, role="_member_", debug=None):
         ]
         if debug:
             pprint.pprint( cmd )
-        try:
-            result = subprocess.check_call( cmd )
-        except subprocess.CalledProcessError, e:
-            sys.stderr.write("Error: Adding  user %s to tenant %s\n" % (user,tenant) )
-            sys.stderr.write("%s\n" % e.output)
-        
+
+        if run:
+            try:
+                result = subprocess.check_call( cmd )
+            except subprocess.CalledProcessError, e:
+                sys.stderr.write("Error: Adding  user %s to tenant %s\n" % (user,tenant) )
+                sys.stderr.write("%s\n" % e.output)
+            
 
 
 if __name__ == "__main__":
@@ -243,9 +272,10 @@ if __name__ == "__main__":
     tukey = True
     approved_members = set()
     set_ceph_quota = True
+    create_s3_creds = True
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota"])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota", "nocephs3"])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -261,6 +291,8 @@ if __name__ == "__main__":
             tukey = False
         elif opt in ("--nocephquota"):
             set_ceph_quota = False
+        elif opt in ("--nocephs3"):
+            create_s3_creds = False
 	
 
     sfocc = SalesForceOCC()
@@ -342,6 +374,10 @@ if __name__ == "__main__":
     #FIXME: Most of this stuff could be moved into the python, just simpler not to
     print "Creating New Users:"
     for username, fields in members_list.items():
+
+        #I fail at a good flow for creating new tenant+user combo vs existing tenant+new user
+        user_created = None
+
         #Nih style changes....i am doing this wrong
         if nih_file:
             if fields['eRA_Commons_username'].upper()  in nih_approved_users:
@@ -369,7 +405,11 @@ if __name__ == "__main__":
                         #Will create the new tenant
                         print "INFO: Creating new tenant %s" % (fields['tenant'])
                         if create_tenant(tenant=fields['tenant'], debug=debug,run=run):
-                            add_member_to_tenant(role='quota_leader', tenant=fields['tenant'],users=[username] )
+                            print "INFO: Creating users %s" % username
+                            user_created = create_user(username=username,fields=fields, debug=debug, run=run)
+                            add_member_to_tenant(role='quota_leader', tenant=fields['tenant'],users=[username], debug=debug, run=run)
+                            if create_s3_creds:
+                                create_ceph_s3_creds(tenant=fields['tenant'],username=username,debug=debug,run=run)
                             pass
                         else:
                             sys.stderr.write("ERROR: Creating new tenant %s skipping user creation.\n" % fields['tenant'] )
@@ -378,10 +418,10 @@ if __name__ == "__main__":
                         sys.stderr.write("ERROR: New User %s has no existing tenant %s \n" % (username, fields['tenant']) )
                         continue
         
-            #Create the user
-            if username:
+            #Create the user in existing tenant
+            if username and not user_created:
                 print "INFO: Creating users %s" % username
-                user_created = create_user(username=username,fields=fields, debug=debug, run=run)
+                create_user(username=username,fields=fields, debug=debug, run=run)
 
     #Apply Quotas
     print "Setting Quotas"
@@ -448,11 +488,5 @@ if __name__ == "__main__":
             pprint.pprint( invalid_tenant_members ) 
             pprint.pprint( additional_tenant_members ) 
        
-        remove_member_from_tenant(tenant=tenant_name, users=invalid_tenant_members)
-        add_member_to_tenant(tenant=tenant_name, users=additional_tenant_members)
-        
-        
-        
-        
-        
-
+        remove_member_from_tenant(tenant=tenant_name, users=invalid_tenant_members, debug=debug, run=run)
+        add_member_to_tenant(tenant=tenant_name, users=additional_tenant_members, debug=debug, run=run)
