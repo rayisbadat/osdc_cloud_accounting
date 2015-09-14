@@ -453,7 +453,7 @@ if __name__ == "__main__":
         if user_exists and fields['quota_leader']:
             if fields['object_storage_quota'] and set_ceph_quota:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], debug=debug,run=run)
-            if fields['block_storage_quota']:
+            if fields['block_storage_quota'] or fields['block_storage_quota']==0:
                 #takes quota in GibaBytes
                 set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], debug=debug,run=run)
             if fields['core_quota']:
