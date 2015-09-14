@@ -451,14 +451,17 @@ if __name__ == "__main__":
 
         #Set storage quota if leader
         if user_exists and fields['quota_leader']:
-            if fields['object_storage_quota'] and set_ceph_quota:
+            if ( fields['object_storage_quota'] or fields['object_storage_quota']==0) and set_ceph_quota:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], debug=debug,run=run)
+
             if fields['block_storage_quota'] or fields['block_storage_quota']==0:
                 #takes quota in GibaBytes
                 set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], debug=debug,run=run)
-            if fields['core_quota']:
+
+            if fields['core_quota'] or fields['core_quota']==0:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="core", quota_value=fields['core_quota'], debug=debug,run=run)
-            if fields['ram_quota']:
+
+            if fields['ram_quota'] or fields['ram_quota']==0:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="ram", quota_value=fields['ram_quota'], debug=debug,run=run)
             elif fields['ram_quota'] is None and fields['core_quota']:
                 ram_quota=fields['core_quota']*3*1024
