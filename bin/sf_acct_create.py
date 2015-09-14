@@ -125,6 +125,11 @@ def set_quota(username, tenant, quota_type, quota_value, debug=None,run=None):
                 '%s' % tenant,
                 '%s' % quota_value,
             ]
+    elif quota_type == 'ram':
+        cmd = [ '/usr/local/sbin/update_nova_ram_quotas.sh',
+                '%s' % tenant,
+                '%s' % quota_value,
+            ]
     else:
         return False 
 
@@ -453,6 +458,12 @@ if __name__ == "__main__":
                 set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], debug=debug,run=run)
             if fields['core_quota']:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="core", quota_value=fields['core_quota'], debug=debug,run=run)
+            if fields['ram_quota']:
+                set_quota(username=username, tenant=fields['tenant'], quota_type="ram", quota_value=fields['ram_quota'], debug=debug,run=run)
+            elif fields['ram_quota'] is None and fields['core_quota']:
+                ram_quota=fields['core_quota']*3*1024
+                set_quota(username=username, tenant=fields['tenant'], quota_type="ram", quota_value=ram_quota, debug=debug,run=run)
+   
    
     #Lock users
     print "Locking/Unlocking Users:"

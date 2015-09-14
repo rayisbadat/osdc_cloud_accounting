@@ -155,6 +155,7 @@ class SalesForceOCC:
         contacts_dict = {}
         contact_statuses = self.get_campaign_members_status(campaign_name=campaign_name)
         contact_quotas_core = self.get_campaign_members_info(campaign_name=campaign_name,field='core')
+        contact_quotas_ram = self.get_campaign_members_info(campaign_name=campaign_name,field='ram')
         contact_quotas_storage = self.get_campaign_members_info(campaign_name=campaign_name,field='storage')
         contact_quotas_object_storage = self.get_campaign_members_info(campaign_name=campaign_name,field='object_storage')
         contact_quotas_block_storage = self.get_campaign_members_info(campaign_name=campaign_name,field='block_storage')
@@ -187,6 +188,7 @@ class SalesForceOCC:
                     'Phone': str(contact[self.objectNS.Phone]),
                     'id':  str(contact[self.objectNS.Id]) if str(contact[self.objectNS.Id])  !="" else None ,
                     'core_quota': contact_quotas_core[str(contact[self.objectNS.Id])],
+                    'ram_quota': contact_quotas_ram[str(contact[self.objectNS.Id])],
                     'storage_quota': contact_quotas_storage[str(contact[self.objectNS.Id])],
                     'object_storage_quota': contact_quotas_object_storage[str(contact[self.objectNS.Id])],
                     'block_storage_quota': contact_quotas_block_storage[str(contact[self.objectNS.Id])],
@@ -258,6 +260,13 @@ class SalesForceOCC:
                 """ % (campaign_id)
             field_indexer = self.objectNS.Core_Quota__c
             multiplier = 1
+        elif field == 'ram':
+            query_campaign_members_field = """SELECT ContactId, RAM_Quota__c
+                FROM CampaignMember
+                WHERE CampaignId = '%s'
+                """ % (campaign_id)
+            field_indexer = self.objectNS.RAM_Quota__c
+            multiplier = 1024
         elif field == 'storage':
             query_campaign_members_field = """SELECT ContactId, Storage_Quota__c
                 FROM CampaignMember
