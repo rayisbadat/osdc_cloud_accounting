@@ -410,7 +410,6 @@ if __name__ == "__main__":
                             add_member_to_tenant(role='quota_leader', tenant=fields['tenant'],users=[username], debug=debug, run=run)
                             if create_s3_creds:
                                 create_ceph_s3_creds(tenant=fields['tenant'],username=username,debug=debug,run=run)
-                            pass
                         else:
                             sys.stderr.write("ERROR: Creating new tenant %s skipping user creation.\n" % fields['tenant'] )
                     else:
@@ -422,6 +421,8 @@ if __name__ == "__main__":
             if username and not user_created:
                 print "INFO: Creating users %s" % username
                 create_user(username=username,fields=fields, debug=debug, run=run)
+                if create_s3_creds:
+                    create_ceph_s3_creds(tenant=fields['tenant'],username=username,debug=debug,run=run)
 
     #Apply Quotas
     print "Setting Quotas"
