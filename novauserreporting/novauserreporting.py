@@ -43,10 +43,12 @@ import numpy
 
 class UserUsageStat:
     """This is an object to store a users info"""
-    def __init__(self, username, tenant=None, corehrs=0, du=0,obj_du=0,blk_du=0):
+    def __init__(self, username, tenant=None, corehrs=0, du=0,obj_du=0,blk_du=0,ramhrs=0,ephhrs=0):
         self.username = username
         self.tenant = tenant
         self.corehrs = corehrs
+        self.ramhrs = ramhrs
+        self.ephhrs = ephhrs
         self.du = du
         self.obj_du = obj_du 
         self.blk_du = blk_du
@@ -146,9 +148,11 @@ class NovaUserReporting:
             sys.stderr.write("Error %s" % (e))
             sys.exit(1)
 
-    def get_corehrs(self, user_id=None, tenant_id=None):
+    def get_stathrs(self, user_id=None, tenant_id=None, stat=None):
         """Fetch the core hrs for a uuid, can be by tenant or user"""
         corehrs_total = 0
+        ramhrs_total = 0
+        ephhrs_total = 0
         query_base = """SELECT
                         created_at,
                         updated_at,
@@ -164,7 +168,8 @@ class NovaUserReporting:
                         terminated_at,
                         instance_type_id,
                         uuid,
-                        task_state
+                        task_state,
+                        ephemeral_gb+root_gb
 
                     from nova.instances where vm_state != 'error' and
                     (
@@ -228,6 +233,9 @@ class NovaUserReporting:
             user_id = row[5]
             project_id = row[6]
             vcpus = int(row[8])
+            ram = int(row[7])/1024
+            eph = int(row[15])
+
             try:
                 scheduled_at = row[9].replace(tzinfo=timezone('UTC'))
             except AttributeError:
@@ -292,14 +300,32 @@ class NovaUserReporting:
                 #This is for the --now function.  I just want a pt in time of core used
                 corehrs = vcpus
                 corehrs_total += corehrs
+                ramhrs = ram
+                ramhrs_total += ramhrs
+                ephhrs = eph
+                ephhrs_total += ephhrs
             elif safe_launched_at >= self.start_time and safe_terminated_at <= self.cieling_time and safe_launched_at <= safe_terminated_at:
                 #After all this only sum up the ones in range
                 time_up = safe_terminated_at - safe_launched_at
                 corehrs = (time_up.total_seconds() / 3600) * vcpus
                 corehrs_total += corehrs
+                ramhrs = (time_up.total_seconds() / 3600) * ram
+                ramhrs_total += ramhrs
+                ephhrs = (time_up.total_seconds() / 3600) * eph
+                ephhrs_total += ephhrs
 
         conn.close()
-        return int(corehrs_total)
+
+        if stat=='corehrs':
+            return int(corehrs_total)
+        elif stat=='ramhrs':
+            return int(ramhrs_total)
+        elif stat=='ephhrs':
+            return int(ephhrs_total)
+        else:
+            return False
+
+
 
 
     def get_cinder_du_percentile(self, user_id=None, tenant_id=None, percentile=95):
@@ -492,7 +518,9 @@ class NovaUserReporting:
             #Find users in a tenant
             tenant_users = tenant.list_users()
             for user in tenant_users:
-                corehrs = self.get_corehrs(user_id=user.id, tenant_id=tenant.id)
+                corehrs = self.get_stathrs(user_id=user.id, tenant_id=tenant.id, stat="corehrs")
+                ramhrs = self.get_stathrs(user_id=user.id, tenant_id=tenant.id, stat="ramhrs")
+                ephhrs = self.get_stathrs(user_id=user.id, tenant_id=tenant.id, stat="ephhrs")
                 #Adjust paths for real tenants...
                 du = 0
                 obj_du = 0
@@ -515,23 +543,26 @@ class NovaUserReporting:
                         du += temp_du
                 if self.debug:
                     sys.stderr.write( "Tenant: %s, USER: %s,core=%s,obj=%s,blk=%s,type=%s\n" %(tenant.name,user.name, corehrs,obj_du, blk_du, storage_type))
-                self.cloud_users.setdefault(user.name, []).append( UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du, obj_du=obj_du, blk_du=blk_du) )
+                self.cloud_users.setdefault(user.name, []).append( UserUsageStat(username=user.name, tenant=tenant.name, corehrs=corehrs, du=du, obj_du=obj_du, blk_du=blk_du, ramhrs=ramhrs, ephhrs=ephhrs) )
 
 
     def gen_csv(self):
         self.csv = []
-        self.csv.extend(["User, Core Hours (H), Misc Disk Usage (GiB), Object Storage (GiB), Block Storage (GiB)"])
+        self.csv.extend(["User, Core Hours (H), RAM Hours (GiB/hr), Ephemeral Hours (GiB/hr), Misc Disk Usage (GiB), Object Storage (GiB), Block Storage (GiB)"])
         for cloud_user, stats in self.cloud_users.items():
-            #self.csv.extend(["%s,%s,%s" % (cloud_user, stats.corehrs, stats.du)])
-            #This is stupid but until we have better handling on multi tenant users, its kludged to work
-
+            
+            #this is stupid and left over from before i was sure how multi tenancy would work.
             du = stats[0].du
             obj_du = stats[0].obj_du
             blk_du = stats[0].blk_du
             corehrs = 0
-            for per_tenant_corehrs in stats:
-                corehrs += per_tenant_corehrs.corehrs
-            self.csv.extend(["%s,%s,%s,%s,%s" % (cloud_user, corehrs, du,obj_du, blk_du)])
+            ramhrs = 0
+            ephhrs = 0
+            for per_tenant_stats in stats:
+                corehrs += per_tenant_stats.corehrs
+                ramhrs += per_tenant_stats.ramhrs
+                ephhrs += per_tenant_stats.ephhrs
+            self.csv.extend(["%s,%s,%s,%s,%s,%s,%s" % (cloud_user, corehrs, ramhrs,ephhrs,du,obj_du, blk_du)])
 
 
     def print_csv(self):
