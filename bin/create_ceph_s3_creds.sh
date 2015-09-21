@@ -26,6 +26,12 @@ username=${2}
 set -e
 set -u
 
+db_name=${s3creds_db_name}
+db_server=${s3creds_db_server}
+db_table=${s3creds_db_table}
+db_user=${s3creds_db_user}
+db_passwd=${s3creds_db_passwd}
+
 
 if [ -z "$username" ] || [ -z "$tenant" ]
 then
@@ -57,7 +63,13 @@ write_out_creds() {
 push_to_db() {
 
     secret_key_hashed=$( python -c "import bcrypt;print bcrypt.hashpw('$secret_key', bcrypt.gensalt())" )
-    echo $encrypted_secret_key
+
+    mysql -h$db_server -u$db_user -p$db_passwd $db_name << EOF
+    INSERT INTO ${db_table} 
+    (created_at,updated_at,deleted_at,username,tenant_name,tenant_uuid,access_key,secret_key_hash,deleted) 
+    VALUES 
+    (NOW(),NOW(),NOW(),"$username","$tenant","$tenant_uuid","$access_key","$secret_key_hashed",'0')
+EOF
     
 
 }
@@ -66,14 +78,9 @@ compare_hashes() {
     python -c "import bcrypt;password=\"${secret_key}\";hashed=\"$secret_key_hashed\"; print( bcrypt.hashpw(password, hashed) == hashed )"
 }
 
-push_to_db
-compare_hashes
-
-}
-
 
 touch_initial_file
 find_tenant_uuid
 create_s3_creds
 write_out_creds
-
+push_to_db
