@@ -52,8 +52,9 @@ find_tenant_uuid() {
     
 create_s3_creds() {
     json=$(radosgw-admin key create --uid=${tenant_uuid} --key-type=s3 --gen-access-key)
-    access_key=$(echo $json | perl -00n -e 'undef $/; ' -e 'm|\"access_key\": "([^"]+)"|ms && print "$1\n";')
-    secret_key=$(echo $json | perl -00n -e 'undef $/; ' -e 'm|\"secret_key\": "([^"]+)"|ms && print "$1\n";')
+    ceph_user_id=$(echo $json | perl -00n -e 'undef $/; ' -e 'm|\"user_id\": "([^"]+)",|ms && print "$1\n";')
+    access_key=$(echo $json | perl -00n -e 'undef $/; ' -e 'm|\"access_key\": "([^"]+)",\s+\"secret_key\": "([^"]+)"}],|ms && print "$1\n";')
+    secret_key=$(echo $json | perl -00n -e 'undef $/; ' -e 'm|\"access_key\": "([^"]+)",\s+\"secret_key\": "([^"]+)"}],|ms && print "$2\n";')
 }
 
 write_out_creds() {
@@ -66,9 +67,9 @@ push_to_db() {
 
     mysql -h$db_server -u$db_user -p$db_passwd $db_name << EOF
     INSERT INTO ${db_table} 
-    (created_at,updated_at,deleted_at,username,tenant_name,tenant_uuid,access_key,secret_key_hash,deleted) 
+    (created_at,updated_at,deleted_at,username,tenant_name,tenant_uuid,ceph_user_id,access_key,secret_key_hash,deleted) 
     VALUES 
-    (NOW(),NOW(),NOW(),"$username","$tenant","$tenant_uuid","$access_key","$secret_key_hashed",'0')
+    (NOW(),NOW(),NOW(),"$username","$tenant","$tenant_uuid","$ceph_user_id","$access_key","$secret_key_hashed",'0')
 EOF
     
 
