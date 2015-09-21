@@ -54,6 +54,23 @@ write_out_creds() {
     sudo su - $username  -c "echo -e access_key=${access_key}\\\nsecret_key=${secret_key} >> ${CREDS_FILE}" 
 }
 
+push_to_db() {
+
+    secret_key_hashed=$( python -c "import bcrypt;print bcrypt.hashpw('$secret_key', bcrypt.gensalt())" )
+    echo $encrypted_secret_key
+    
+
+}
+
+compare_hashes() {
+    python -c "import bcrypt;password=\"${secret_key}\";hashed=\"$secret_key_hashed\"; print( bcrypt.hashpw(password, hashed) == hashed )"
+}
+
+push_to_db
+compare_hashes
+
+}
+
 
 touch_initial_file
 find_tenant_uuid

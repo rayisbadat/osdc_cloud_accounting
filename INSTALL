@@ -17,7 +17,7 @@ Deploy Account Maangement Software to a cloud
     
 * Install prereqs ::
 
-    apt-get install python-virtualenv libxml2-dev libxslt-dev libmysqlclient-dev python-dev pwgen
+    apt-get install python-virtualenv libxml2-dev libxslt-dev libmysqlclient-dev python-dev pwgen python-bcrypt
     apt-get install python-novaclient python-keystoneclient #  If deploying to an outdated ESSEX system pull from git and install)
     apt-get install python-sqlalchemy python-mysqldb
     #pip install sqlalchemy

@@ -15,7 +15,7 @@ class SalesForceOCC:
         self.contacts = {}
         self.contact_ids = []
 
-    def create_invoice_task(self, campaign, contact_id, case_id, corehrs, blk_du, obj_du, start_date, end_date, du=0):
+    def create_invoice_task(self, campaign, contact_id, case_id, corehrs, ramhrs, ephhrs, blk_du, obj_du, start_date, end_date, du=0):
         """ Create the task/invoice in salesforce.  du is a legacy generic du value, set it to 0 """
 
         """
@@ -34,6 +34,8 @@ class SalesForceOCC:
                 'Status': 'Completed',
                 'Priority': 'Normal',
                 'Core_Hour_Use__c': corehrs,
+                'RAM_Hrs__c': ramhrs,
+                'Ephmeral_Storage__c': ephhrs,
                 'Storage_Use__c': du,
                 'Block_Storage_Use__c': blk_du,
                 'Object_Storage_Use__c': obj_du,

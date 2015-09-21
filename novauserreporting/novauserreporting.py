@@ -60,7 +60,7 @@ class NovaUserReporting:
         #Dict of settings
         self.settings = {}
         self.cloud_users = {}
-        self.debug = None
+        self.debug = debug
 
         #Stores the csv
         self.csv = []
@@ -328,7 +328,7 @@ class NovaUserReporting:
 
 
 
-    def get_cinder_du_percentile(self, user_id=None, tenant_id=None, percentile=95):
+    def get_cinder_du_percentile(self, user_id=None, tenant_id=None, debug=None,percentile=95):
         """Fetch the core hrs for a uuid, can be by tenant or user"""
         #An array of the storage, we will take a start and stop time period and iterate over
         dus = []
@@ -383,6 +383,8 @@ class NovaUserReporting:
                 sys.exit(1)
     
             try:
+                if debug:
+                    print query
                 s = text(query)
                 results = conn.execute(s)
             except SQLAlchemyError as e:
@@ -491,6 +493,7 @@ class NovaUserReporting:
             du = self.get_cinder_du_percentile(
                 tenant_id=tenant_id, 
                 user_id=user_id,
+                debug=self.debug,
                 percentile=self.settings['du_percentile'] )
 
         else:
@@ -624,11 +627,15 @@ class NovaUserReporting:
 
             #This is stupid but until we have better handling on multi tenant users, its kludged to work
             du = stats[0].du
-            blk_du = stats[0].blk_du
             obj_du = stats[0].obj_du
+            blk_du = stats[0].blk_du
             corehrs = 0
-            for per_tenant_corehrs in stats:
-                corehrs += per_tenant_corehrs.corehrs
+            ramhrs = 0
+            ephhrs = 0
+            for per_tenant_stats in stats:
+                corehrs += per_tenant_stats.corehrs
+                ramhrs += per_tenant_stats.ramhrs
+                ephhrs += per_tenant_stats.ephhrs
             
             # Assume the username on cloud and SF match
             # If not we can try the slow way and query SF for a match
@@ -658,6 +665,8 @@ class NovaUserReporting:
                             contact_id=contact_id,
                             case_id=case_id, 
                             corehrs=corehrs, 
+                            ramhrs=ramhrs,
+                            ephhrs=ephhrs,
                             du=du,
                             blk_du=blk_du,
                             obj_du=obj_du,
