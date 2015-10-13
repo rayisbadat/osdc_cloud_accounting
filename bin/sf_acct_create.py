@@ -57,7 +57,7 @@ def create_tenant(tenant, debug=None, run=None):
     else:
         return True
 
-def create_user(username, fields, debug=None,run=None):
+def create_user(username, fields, debug=None,run=None,create_s3_creds=False):
     """ Call create user script """
     if fields['Authentication_Method'] == 'OpenID':
         method = 'openid'
@@ -235,6 +235,7 @@ def remove_member_from_tenant(tenant=None, users=None, role="_member_", debug=No
             "--role=%s"%(role),
         ]
         if debug:
+            print "DEBUG: Removing %s from tenant %s and role %s" %(user,tenant,role)
             pprint.pprint(cmd)
 
         if run:
@@ -245,7 +246,7 @@ def remove_member_from_tenant(tenant=None, users=None, role="_member_", debug=No
                 sys.stderr.write("%s\n" % e.output)
         
 
-def add_member_to_tenant(tenant=None, users=None, role="_member_", debug=None, run=None):
+def add_member_to_tenant(tenant=None, users=None, role="_member_", debug=None, run=None,create_s3_creds=False):
     """ Add users to the tenant """  
     for user in users:
         print "INFO: Adding user %s to tenant %s" % (user, tenant)
@@ -257,6 +258,7 @@ def add_member_to_tenant(tenant=None, users=None, role="_member_", debug=None, r
             "--role=%s"%(role),
         ]
         if debug:
+            print "DEBUG: Adding %s to tenant %s and role %s" %(user,tenant,role)
             pprint.pprint( cmd )
 
         if run:
@@ -265,7 +267,120 @@ def add_member_to_tenant(tenant=None, users=None, role="_member_", debug=None, r
             except subprocess.CalledProcessError, e:
                 sys.stderr.write("Error: Adding  user %s to tenant %s\n" % (user,tenant) )
                 sys.stderr.write("%s\n" % e.output)
+
+            if create_s3_creds:
+                create_ceph_s3_creds(tenant=tenant,username=user,debug=debug,run=run)
             
+
+def adjust_managed_tenants(managed_tenants=None,debug=None,run=None):
+    #Fix the tenants for manged groups
+    #csv_tenant_members = 
+    #approved_tenant_members
+    #current_tenant_members =  currently on system as memebrs
+    #valid_tenant_memebers = they are the ones we are keeping in the tennat
+    #invalid_tenant_members = users we need to remove from a tenant
+    #additional_tenant_members = users we need to add
+    if debug:
+        pprint.pprint( managed_tenants.items()  )
+
+    for tenant_name, csv_tenant_members in managed_tenants.items():
+        #Intersection of CSV and SalesForce
+        approved_tenant_members = csv_tenant_members.intersection( approved_members )
+        #Current users in tenant
+        current_tenant_members = get_tenant_members(tenant=tenant_name)
+        #Keep these user in tenant, they are still valid
+        valid_tenant_members = current_tenant_members.intersection(approved_tenant_members)
+        #We need to remove these users from the tenant
+        invalid_tenant_members = current_tenant_members.difference(valid_tenant_members)
+        #We need to add these users to the tenant
+        additional_tenant_members = approved_tenant_members.difference( valid_tenant_members ) 
+
+        if debug:
+            print tenant_name
+            pprint.pprint( approved_tenant_members ) 
+            pprint.pprint( valid_tenant_members ) 
+            pprint.pprint( invalid_tenant_members ) 
+            pprint.pprint( additional_tenant_members ) 
+       
+        remove_member_from_tenant(tenant=tenant_name, users=invalid_tenant_members, debug=debug, run=run)
+        add_member_to_tenant(tenant=tenant_name, users=additional_tenant_members, debug=debug, run=run)
+
+def adjust_tenants(members_list=None,debug=None,run=None,create_s3_creds=False):
+    #Build tenant lists
+    for username, fields in members_list.items():
+        if fields['tenant'] not in tenant_members:
+            tenant_members[fields['tenant']]=[]
+        tenant_members[fields['tenant']].append(username)
+
+        if fields['subtenants']:
+            for subtenant in fields['subtenants'].split(','):
+                if subtenant not in tenant_members:
+                    tenant_members[subtenant]=[]
+                tenant_members[subtenant].append(username)
+
+    if debug:
+        print "DEBUG: adjusting_tenants tenant_members"
+        pprint.pprint(tenant_members)  
+
+    for tenant in tenant_members.keys():
+        members=tenant_members[tenant]
+
+        #Build lists of who is currently, needs to be added, needs to be removed
+        current_members=get_tenant_members(tenant)
+        members_to_add=set(members)-set(current_members)
+        members_to_remove=set(current_members)-set(members)
+
+        if debug:
+            print "DEBUG: adjusting_tenants current tenant list"
+            pprint.pprint( tenant ) 
+            pprint.pprint( members )
+            pprint.pprint( current_members )
+            pprint.pprint( members_to_add )
+            pprint.pprint( members_to_remove )
+
+        #remove and add as needed
+        add_member_to_tenant(tenant=tenant, users=members_to_add, role="_member_", debug=debug, run=run, create_s3_creds=create_s3_creds)
+        remove_member_from_tenant(tenant=tenant, users=members_to_remove, role="_member_", debug=debug, run=run)
+        
+
+def adjust_quotas(members_list=None,debug=None,run=None):
+    """ Adjusts tenants quotas """
+
+    for username, fields in members_list.items():
+        #Nih style changes....i am doing this wrong
+        if nih_file:
+            if fields['eRA_Commons_username'].upper()  in nih_approved_users:
+                fields['username'] = fields['eRA_Commons_username'].upper()
+                username = fields['eRA_Commons_username'].upper()
+                fields['login_identifier']="urn:mace:incommon:nih.gov!https://bionimbus-pdc.opensciencedatacloud.org/shibboleth!%s"%(username)
+            else:
+                continue
+
+        if debug:
+            print "DEBUG: Username from SF = %s" % (username) 
+
+        try:
+            user_exists = pwd.getpwnam(username)
+        except:
+            user_exists = None
+
+        #Set storage quota if leader
+        if user_exists and fields['quota_leader']:
+            if ( fields['object_storage_quota'] or fields['object_storage_quota']==0) and set_ceph_quota:
+                set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], debug=debug,run=run)
+
+            if fields['block_storage_quota'] or fields['block_storage_quota']==0:
+                #takes quota in GibaBytes
+                set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], debug=debug,run=run)
+
+            if fields['core_quota'] or fields['core_quota']==0:
+                set_quota(username=username, tenant=fields['tenant'], quota_type="core", quota_value=fields['core_quota'], debug=debug,run=run)
+
+            if fields['ram_quota'] or fields['ram_quota']==0:
+                set_quota(username=username, tenant=fields['tenant'], quota_type="ram", quota_value=fields['ram_quota'], debug=debug,run=run)
+            elif fields['ram_quota'] is None and fields['core_quota']:
+                ram_quota=fields['core_quota']*3*1024
+                set_quota(username=username, tenant=fields['tenant'], quota_type="ram", quota_value=ram_quota, debug=debug,run=run)
 
 
 if __name__ == "__main__":
@@ -276,6 +391,7 @@ if __name__ == "__main__":
     nih_file = False
     tukey = True
     approved_members = set()
+    tenant_members = dict()
     set_ceph_quota = True
     create_s3_creds = True
 
@@ -431,77 +547,21 @@ if __name__ == "__main__":
 
     #Apply Quotas
     print "Setting Quotas"
-    for username, fields in members_list.items():
-        #Nih style changes....i am doing this wrong
-        if nih_file:
-            if fields['eRA_Commons_username'].upper()  in nih_approved_users:
-                fields['username'] = fields['eRA_Commons_username'].upper()
-                username = fields['eRA_Commons_username'].upper()
-                fields['login_identifier']="urn:mace:incommon:nih.gov!https://bionimbus-pdc.opensciencedatacloud.org/shibboleth!%s"%(username)
-            else:
-                continue
+    adjust_quotas(members_list=members_list,debug=debug,run=run)     
 
-        if debug:
-            print "DEBUG: Username from SF = %s" % (username) 
+    #adjust tenants and subtenant membership        
+    print "Adjusting tenant membership"
+    adjust_tenants(members_list=members_list,debug=debug,run=run,create_s3_creds=create_s3_creds)     
 
-        try:
-            user_exists = pwd.getpwnam(username)
-        except:
-            user_exists = None
-
-        #Set storage quota if leader
-        if user_exists and fields['quota_leader']:
-            if ( fields['object_storage_quota'] or fields['object_storage_quota']==0) and set_ceph_quota:
-                set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], debug=debug,run=run)
-
-            if fields['block_storage_quota'] or fields['block_storage_quota']==0:
-                #takes quota in GibaBytes
-                set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], debug=debug,run=run)
-
-            if fields['core_quota'] or fields['core_quota']==0:
-                set_quota(username=username, tenant=fields['tenant'], quota_type="core", quota_value=fields['core_quota'], debug=debug,run=run)
-
-            if fields['ram_quota'] or fields['ram_quota']==0:
-                set_quota(username=username, tenant=fields['tenant'], quota_type="ram", quota_value=fields['ram_quota'], debug=debug,run=run)
-            elif fields['ram_quota'] is None and fields['core_quota']:
-                ram_quota=fields['core_quota']*3*1024
-                set_quota(username=username, tenant=fields['tenant'], quota_type="ram", quota_value=ram_quota, debug=debug,run=run)
-   
-   
     #Lock users
     print "Locking/Unlocking Users:"
     try:
         starting_uid=int(settings['general']['starting_uid'])
     except KeyError:
         starting_uid=1500
-    toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,debug=debug,) 
+    toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,debug=debug) 
 
-    #Fix the tenants for manged groups
-    #csv_tenant_members = 
-    #approved_tenant_members
-    #current_tenant_members =  currently on system as memebrs
-    #valid_tenant_memebers = they are the ones we are keeping in the tennat
-    #invalid_tenant_members = users we need to remove from a tenant
-    #additional_tenant_members = users we need to add
-    print "Adjusting tenant membership:" 
-    for tenant_name, csv_tenant_members in managed_tenants.items():
-        #Intersection of CSV and SalesForce
-        approved_tenant_members = csv_tenant_members.intersection( approved_members )
-        #Current users in tenant
-        current_tenant_members = get_tenant_members(tenant=tenant_name)
-        #Keep these user in tenant, they are still valid
-        valid_tenant_members = current_tenant_members.intersection(approved_tenant_members)
-        #We need to remove these users from the tenant
-        invalid_tenant_members = current_tenant_members.difference(valid_tenant_members)
-        #We need to add these users to the tenant
-        additional_tenant_members = approved_tenant_members.difference( valid_tenant_members ) 
+    print "Adjusting managed tenant membership:" 
+    adjust_managed_tenants(managed_tenants=managed_tenants,debug=debug,run=run)
 
-        if debug:
-            print tenant_name
-            pprint.pprint( approved_tenant_members ) 
-            pprint.pprint( valid_tenant_members ) 
-            pprint.pprint( invalid_tenant_members ) 
-            pprint.pprint( additional_tenant_members ) 
-       
-        remove_member_from_tenant(tenant=tenant_name, users=invalid_tenant_members, debug=debug, run=run)
-        add_member_to_tenant(tenant=tenant_name, users=additional_tenant_members, debug=debug, run=run)
+    

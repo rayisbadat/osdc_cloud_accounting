@@ -163,6 +163,7 @@ class SalesForceOCC:
         contact_quotas_block_storage = self.get_campaign_members_info(campaign_name=campaign_name,field='block_storage')
         contact_quotas_leader = self.get_campaign_members_info(campaign_name=campaign_name,field='leader')
         contact_tenant = self.get_campaign_members_info(campaign_name=campaign_name,field='tenant')
+        contact_subtenants = self.get_campaign_members_info(campaign_name=campaign_name,field='subtenants')
 
         #Loop through and dict the results for latter processing
         for contact in contacts:
@@ -200,7 +201,7 @@ class SalesForceOCC:
                     'login_identifier': str(contact[self.objectNS.Authentication_ID__c]) if str(contact[self.objectNS.Authentication_ID__c]) !="" else None,
                     'eRA_Commons_username': str(contact[self.objectNS.PDC_eRA_Commons__c]),
                     'tenant': contact_tenant[str(contact[self.objectNS.Id])],
-
+                    'subtenants': contact_subtenants[str(contact[self.objectNS.Id])],
                 }
                     
             except KeyError as e:
@@ -306,6 +307,14 @@ class SalesForceOCC:
                 """ % (campaign_id)
             multiplier = 1
             field_indexer = self.objectNS.Tenant_Group__c
+
+        elif field == 'subtenants':
+            query_campaign_members_field = """SELECT ContactId, Sub_Tenant__c
+                FROM CampaignMember
+                WHERE CampaignId = '%s'
+                """ % (campaign_id)
+            multiplier = 1
+            field_indexer = self.objectNS.Sub_Tenant__c
 
         else:
             raise KeyError("No core or storage quota provided")

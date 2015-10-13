@@ -41,6 +41,8 @@ fi
 touch_initial_file() {
     #Cant set quota till after first upload
     user_home=$(getent passwd $username | cut -d":" -f6)
+    #There is some kind of ldap lag i need to work around, until then breaking generallness
+    #user_home=/home/${username}
     (cd $user_home; source .novarc; cd /tmp; echo "42" > .sfquotaset; swift upload sfquotaset .sfquotaset &> /dev/null ; swift delete sfquotaset &> /dev/null )
 }
 
@@ -58,7 +60,7 @@ create_s3_creds() {
 }
 
 write_out_creds() {
-    sudo su - $username  -c "echo -e access_key=${access_key}\\\nsecret_key=${secret_key} >> ${CREDS_FILE}" 
+    sudo su - $username  -c "echo -e [[${tenant}]]\\\naccess_key=${access_key}\\\nsecret_key=${secret_key}\\\n >> ${CREDS_FILE}" 
 }
 
 push_to_db() {
@@ -79,6 +81,8 @@ compare_hashes() {
     python -c "import bcrypt;password=\"${secret_key}\";hashed=\"$secret_key_hashed\"; print( bcrypt.hashpw(password, hashed) == hashed )"
 }
 
+service nscd restart &>/dev/null
+sleep 5s
 
 touch_initial_file
 find_tenant_uuid
