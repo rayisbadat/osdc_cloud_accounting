@@ -50,7 +50,7 @@ DISK_QUOTA=${3}
 
 if [ "$TENANT" == "" ] || [ "$DISK_QUOTA" == "" ] || [ "$USERNAME" == "" ]
 then
-    echo "Usage: $0 USERNAME/TENANT Disk_Quota_In_Bytes"
+    echo "Usage: $0 USERNAME TENANT Disk_Quota_In_Bytes"
     #echo "User and Tenant must exist before hand"
     exit 1
 fi

@@ -347,14 +347,6 @@ def adjust_quotas(members_list=None,debug=None,run=None):
     """ Adjusts tenants quotas """
 
     for username, fields in members_list.items():
-        #Nih style changes....i am doing this wrong
-        if nih_file:
-            if fields['eRA_Commons_username'].upper()  in nih_approved_users:
-                fields['username'] = fields['eRA_Commons_username'].upper()
-                username = fields['eRA_Commons_username'].upper()
-                fields['login_identifier']="urn:mace:incommon:nih.gov!https://bionimbus-pdc.opensciencedatacloud.org/shibboleth!%s"%(username)
-            else:
-                continue
 
         if debug:
             print "DEBUG: Username from SF = %s" % (username) 
@@ -484,12 +476,25 @@ if __name__ == "__main__":
                     if row['phsid'].split(".")[0] in settings['accounts']['managed_tenants']:
                         managed_tenants[row['phsid'].split(".")[0]].add(row['login'].upper())
 
+                for username, fields in members_list.items():
+                    #Nih style changes....i am doing this wrong
+                    if nih_file:
+                        if fields['eRA_Commons_username'].upper()  in nih_approved_users:
+                            new_username=fields['eRA_Commons_username'].upper()
+                            members_list[new_username] = members_list.pop( username )
+                            members_list[new_username]['username'] = new_username
+                            members_list[new_username]['login_identifier'] = "urn:mace:incommon:nih.gov!https://bionimbus-pdc.opensciencedatacloud.org/shibboleth!%s"%(new_username)
+                        else:
+                            continue
+
+
                         
         except IOError as e:
             sys.exit('file %s not found: %s' % (nih_file, e))
         except csv.Error as e:
             sys.exit('file %s, line %d: %s' % (filename, reader.line_num, e))
     
+
 
     #Loop through list of members and run the bash scripts that will create the account
     #FIXME: Most of this stuff could be moved into the python, just simpler not to
@@ -499,12 +504,9 @@ if __name__ == "__main__":
         #I fail at a good flow for creating new tenant+user combo vs existing tenant+new user
         user_created = None
 
-        #Nih style changes....i am doing this wrong
         if nih_file:
             if fields['eRA_Commons_username'].upper()  in nih_approved_users:
-                fields['username'] = fields['eRA_Commons_username'].upper()
-                username = fields['eRA_Commons_username'].upper()
-                fields['login_identifier']="urn:mace:incommon:nih.gov!https://bionimbus-pdc.opensciencedatacloud.org/shibboleth!%s"%(username)
+                pass
             else:
                 continue
 
