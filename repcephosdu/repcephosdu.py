@@ -34,6 +34,9 @@ from pytz import timezone
 import pytz
 
 import numpy
+import json
+import pprint
+import subprocess
 
 
 class RepCephOSdu:
@@ -135,6 +138,41 @@ class RepCephOSdu:
         
         return total_bucket_du
 
+
+    def get_rados_du_for_tenant(self,username=None, password=None, auth_url=None, tenant_name=None, debug=None):
+        """
+            Takes the openstack credentials, gets a list of containers and their sizes, returns sum
+        """
+
+        os_creds={}
+        strip='\'"'
+        os_creds['user'] = username.translate(None,strip)
+        os_creds['key'] = password.translate(None,strip)
+        os_creds['tenant_name'] = tenant_name.translate(None,strip)
+        os_creds['authurl'] = auth_url.translate(None,strip)
+
+        cmd = [ '/usr/local/sbin/get_tenant_cephs3_stats.sh','%s'%(os_creds['tenant_name']) ]
+    
+        #Set quota
+        if debug:
+            pprint.pprint(cmd)
+    
+        try:
+            stats_json=subprocess.check_output(cmd)
+            if debug:
+                pprint.pprint( stats_json )
+            stats=json.loads(stats_json)
+            if debug:
+                pprint.pprint( stats )
+            total_bucket_du = stats['stats']['total_bytes']
+
+        except subprocess.CalledProcessError, e:
+            sys.stderr.write("Error getting tenant $s stats \n" % tenant )
+            sys.stderr.write("%s\n" % e.output)
+            total_bucket_du = None
+
+        return total_bucket_du
+    
     def update_db(self, username, tenant_name, du, debug ):
       
         metadata = MetaData()
@@ -273,9 +311,10 @@ if __name__ == "__main__":
     update = False # Update the database
     debug = False  # Debug statements
     novarc = None  # novarc file for the tenant
+    s3apitype = "rados" #assume swft cmd or rados
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "update", "novarc=" ])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "update", "rados", "swift","novarc=" ])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -286,6 +325,10 @@ if __name__ == "__main__":
             update = True 
         elif opt in ("--novarc"):
             novarc = arg
+        elif opt in ("--rados"):
+            s3apitype = "rados"
+        elif opt in ("--swift"):
+            s3apitype = "swift"
 
     if len(sys.argv) <= 1:
         sys.stderr.write( "Usage: %s --novarc=/PATH/to/.novarc [--debug] [--update]\n"%(__file__) )
@@ -303,7 +346,11 @@ if __name__ == "__main__":
             force_updates_for=user_repcephosddu.force_updates_for
 
             try:
-                swift_du = user_repcephosddu.get_swift_du_for_tenant( debug=debug, **novarc_creds)
+                if s3apitype == "swift":
+                    swift_du = user_repcephosddu.get_swift_du_for_tenant( debug=debug, **novarc_creds)
+                elif s3apitype == "rados":
+                    swift_du = user_repcephosddu.get_rados_du_for_tenant( debug=debug, **novarc_creds)
+                    
             except Exception as e:
                sys.stderr.write("WARN: %s\n" % e) 
                sys.exit(1)
