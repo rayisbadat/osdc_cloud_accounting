@@ -43,7 +43,8 @@ touch_initial_file() {
     user_home=$(getent passwd $username | cut -d":" -f6)
     #There is some kind of ldap lag i need to work around, until then breaking generallness
     #user_home=/home/${username}
-    (cd $user_home; source .novarc; cd /tmp; echo "42" > .sfquotaset; swift upload sfquotaset .sfquotaset &> /dev/null ; swift delete sfquotaset &> /dev/null )
+    #Need to ensure the user exists due to how keystone+ceph inegration works.
+    (cd $user_home; source .novarc; cd /tmp; echo "42" > .sfquotaset; swift upload ${username}-sfquotaset .sfquotaset  &> /dev/null ; swift delete ${username}-sfquotaset &> /dev/null; rm .sfquotaset &>/dev/null)
 }
 
 
@@ -81,7 +82,7 @@ compare_hashes() {
     python -c "import bcrypt;password=\"${secret_key}\";hashed=\"$secret_key_hashed\"; print( bcrypt.hashpw(password, hashed) == hashed )"
 }
 
-service nscd restart &>/dev/null
+service nscd restart &>/dev/null || /bin/true
 sleep 5s
 
 touch_initial_file

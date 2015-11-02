@@ -3,7 +3,7 @@
 touch_initial_file() {
     #Cant set quota till after first upload
     user_home=$(getent passwd $USERNAME | cut -d":" -f6)
-    (cd $user_home; source .novarc; cd /tmp; echo $DISK_QUOTA > .sfquotaset; swift upload sfquotaset .sfquotaset &> /dev/null ; swift delete sfquotaset &> /dev/null )
+    (cd $user_home; source .novarc; cd /tmp; echo $DISK_QUOTA > .sfquotaset; swift upload ${USERNAME}-sfquotaset .sfquotaset &> /dev/null ; swift delete ${USERNAME}-sfquotaset &> /dev/null; rm .sfquotaset &>/dev/null )
 }
 
 set_quota() {
