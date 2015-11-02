@@ -96,7 +96,7 @@ class NovaUserReporting:
                 sys.stderr.write("ERROR: KeyError on pulling ENV\n")
                 sys.exit(1)
 
-    def set_time_range(self, start_date=None, end_date=None):
+    def set_time_range(self, start_date=None, end_date=None, debug=None):
         """ Set the time range """
 
         # Set time zone and localize inputs
@@ -136,6 +136,9 @@ class NovaUserReporting:
             self.cieling_time = self.end_time
         else:
             self.cieling_time = self.now_time
+
+        if debug:
+            print "start_time: %s, cieling_time: %s"%(self.start_time,self.cieling_time)
 
     def db_connect(self, db):
         try:
@@ -615,8 +618,9 @@ class NovaUserReporting:
         s.sendmail(msg['From'], msg.get_all('TO'), msg.as_string())
         s.quit()
 
-    def push_to_sf(self):
+    def push_to_sf(self,debug=None):
         """ Take list of users on cloud, push as many as you can to SF """
+
         sf = SalesForceOCC()
         sf.login(username=self.settings['sfusername'], password=self.settings['sfpassword'], url=self.settings['sfurl'])
         sf.load_contacts_from_campaign(campaign_name=self.settings['campaign'])
@@ -660,6 +664,22 @@ class NovaUserReporting:
                 else:
                     # Write to SalesForce
                     try:
+                        if self.debug or debug:
+                            print """ 
+                                saver_result = sf.create_invoice_task(
+                                    campaign=%s, 
+                                    contact_id=%s,
+                                    case_id=%s, 
+                                    corehrs=%s, 
+                                    ramhrs=%s,
+                                    ephhrs=%s,
+                                    du=%s,
+                                    blk_du=%s,
+                                    obj_du=%s,
+                                    start_date=%s, 
+                                    end_date=%s)
+                            """ %(self.settings['campaign'],contact_id,case_id,corehrs,ramhrs,ephhrs,du,blk_du,obj_du,self.start_time,self.end_time)
+
                         saver_result = sf.create_invoice_task(
                             campaign=self.settings['campaign'], 
                             contact_id=contact_id,

@@ -36,12 +36,14 @@ if __name__ == "__main__":
     email = False
     tenant_reporting = False
     sf = False
+    run = True
+    debug = False
 
     #Load in the CLI flags
     try:
         opts, args = getopt.getopt(sys.argv[1:], "", ["start=", "end=",
             "cloud=", "thismonth", "lastmonth", "thisweek", "lastweek", "now",
-            "noprint", "email", "tenants", "sf"])
+            "noprint", "email", "tenants", "sf", "debug"])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -94,9 +96,14 @@ if __name__ == "__main__":
             tenant_reporting = True
         elif opt in ("--sf"):
             sf = True
+        elif opt in ("--debug"):
+            debug = True
+
+    if debug:
+        print "start and end date: %s,%s" % (start_date, end_date)
 
     #initialize the clase with credentials
-    nova_user_reports = NovaUserReporting("/etc/osdc_cloud_accounting/settings.py")
+    nova_user_reports = NovaUserReporting(config_file="/etc/osdc_cloud_accounting/settings.py",debug=debug)
     nova_user_reports.load_stats(start_date=start_date, end_date=end_date)
     nova_user_reports.gen_csv()
 
