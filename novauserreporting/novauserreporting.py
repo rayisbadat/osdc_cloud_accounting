@@ -659,7 +659,7 @@ class NovaUserReporting:
                 except KeyError:
                     case_id = None
             
-                if ( corehrs is None or corehrs == 0 ) and ( du is None or du == 0):
+                if ( corehrs is None or corehrs == 0 ) and ( du is None or du == 0) and ( obj_du is None or obj_du == 0) and ( blk_du is None or blk_du == 0) and ( ramhrs is None or ramhrs == 0) and ( ephhrs is None or ephhrs == 0):
                     sys.stderr.write("INFO: User %s had no billable usage\n" %(cloud_username) )
                 else:
                     # Write to SalesForce
