@@ -27,7 +27,7 @@ create_users(){
     then
 	source /usr/local/src/.SFACCT/bin/activate
     source /etc/osdc_cloud_accounting/admin_auth
-	/usr/local/src/osdc_cloud_accounting/bin/sf_acct_create.py --nihfile $compiled_output_file  --debug
+	/usr/local/src/osdc_cloud_accounting/bin/sf_acct_create.py --nihfile $compiled_output_file 
     fi
 }
 download_file
