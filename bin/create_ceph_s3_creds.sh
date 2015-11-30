@@ -56,8 +56,8 @@ find_tenant_uuid() {
 create_s3_creds() {
     json=$(radosgw-admin key create --uid=${tenant_uuid} --key-type=s3 --gen-access-key)
     ceph_user_id=$(echo $json | perl -00n -e 'undef $/; ' -e 'm|\"user_id\": "([^"]+)",|ms && print "$1\n";')
-    access_key=$(echo $json | perl -00n -e 'undef $/; ' -e 'm|\"access_key\": "([^"]+)",\s+\"secret_key\": "([^"]+)"}],|ms && print "$1\n";')
-    secret_key=$(echo $json | perl -00n -e 'undef $/; ' -e 'm|\"access_key\": "([^"]+)",\s+\"secret_key\": "([^"]+)"}],|ms && print "$2\n";')
+    access_key=$(echo $json | perl -00n -e 'undef $/; ' -e 'm|\"access_key\": "([^"]+)",\s+\"secret_key\": "([^"]+)"\s*}\s*],|ms && print "$1\n";')
+    secret_key=$(echo $json | perl -00n -e 'undef $/; ' -e 'm|\"access_key\": "([^"]+)",\s+\"secret_key\": "([^"]+)"\s*}\s*],|ms && print "$2\n";')
 }
 
 write_out_creds() {
@@ -85,7 +85,7 @@ compare_hashes() {
 service nscd restart &>/dev/null || /bin/true
 sleep 5s
 
-touch_initial_file
+#touch_initial_file
 find_tenant_uuid
 create_s3_creds
 write_out_creds
