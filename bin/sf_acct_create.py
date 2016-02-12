@@ -361,7 +361,7 @@ def adjust_quotas(members_list=None,debug=None,run=None):
             if ( fields['object_storage_quota'] or fields['object_storage_quota']==0) and set_ceph_quota:
                 set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], debug=debug,run=run)
 
-            if fields['block_storage_quota'] or fields['block_storage_quota']==0:
+            if ( fields['block_storage_quota'] or fields['block_storage_quota']==0 ) and set_cinder_quota:
                 #takes quota in GibaBytes
                 set_quota(username=username, tenant=fields['tenant'], quota_type="cinder", quota_value=fields['block_storage_quota'], debug=debug,run=run)
 
@@ -386,9 +386,10 @@ if __name__ == "__main__":
     tenant_members = dict()
     set_ceph_quota = True
     create_s3_creds = True
+    set_cinder_quota = True
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota", "nocephs3"])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota", "nocephs3","nocinderquota"])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -406,6 +407,8 @@ if __name__ == "__main__":
             set_ceph_quota = False
         elif opt in ("--nocephs3"):
             create_s3_creds = False
+        elif opt in ("--nocinderquota"):
+            set_cinder_quota = False
 	
 
     sfocc = SalesForceOCC()
@@ -439,7 +442,7 @@ if __name__ == "__main__":
 
     #Load up a list of the users in SF that are approved for this cloud
     sfocc.login(username=settings['salesforceocc']['sfusername'], password=settings['salesforceocc']['sfpassword'])
-    contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['salesforceocc']['campaign'],  statuses=["Approved User", "Application Pending"])
+    contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['salesforceocc']['campaign'],  statuses=["Approved User", "Application Pending","CDIS System User"])
     members_list = sfocc.get_approved_users(campaign_name=settings['salesforceocc']['campaign'], contacts=contacts)
 
     if debug:
