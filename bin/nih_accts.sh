@@ -26,8 +26,8 @@ create_users(){
     if [[ $(wc -l $compiled_output_file | cut -f1 -d " " ) > 0 ]]
     then
 	source /usr/local/src/.SFACCT/bin/activate
-    source /etc/osdc_cloud_accounting/admin_auth
-	/usr/local/src/osdc_cloud_accounting/bin/sf_acct_create.py --nihfile $compiled_output_file 
+    source /etc/osdc_cloud_accounting/admin_auth 
+	/usr/local/src/osdc_cloud_accounting/bin/sf_acct_create.py --nihfile $compiled_output_file --nocephquota
     fi
 }
 download_file
