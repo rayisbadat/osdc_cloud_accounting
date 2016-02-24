@@ -19,9 +19,7 @@ Deploy Account Maangement Software to a cloud
 
     apt-get install python-virtualenv libxml2-dev libxslt-dev libmysqlclient-dev python-dev pwgen python-bcrypt mariadb-client
     apt-get install python-novaclient python-keystoneclient #  If deploying to an outdated ESSEX system pull from git and install)
-    apt-get install python-sqlalchemy python-mysqldb
-    #pip install sqlalchemy
-    pip install MySQL-python    
+    apt-get install python-sqlalchemy python-mysqldb python-pymysql
 
     cd /usr/loca/src/
     git clone  https://github.com/superfell/Beatbox
