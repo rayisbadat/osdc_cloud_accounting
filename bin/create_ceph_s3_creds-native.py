@@ -1,4 +1,4 @@
-#!/usr/bin/pythong
+#!/usr/bin/python
 
 ## This program makes some assumptions.  Mainly that if a key exists then the subuser should also exists # Fixme
 ## And that we should always update the s3creds.txt file after every run #NotSure
@@ -6,6 +6,7 @@
 import getopt
 import sys
 import os
+import pwd 
 import subprocess
 import json
 import pprint
@@ -30,7 +31,10 @@ def create_ceph_s3_user(project, username,  user_type="subuser", access_type="re
 	    cmd = [ 'radosgw-admin', 'subuser', 'create', 
 	        "--uid=%s"%(project), 
 	        "--subuser=%s"%(username),
-	        "--access=%s"%(access_type)
+	        "--access=%s"%(access_type),
+	        '--key-type=s3',
+	        '--gen-access-key',
+	        '--gen-secret',
 	        ]
     elif user_type == "info":
 	    cmd = [ 'radosgw-admin', 'user', 'info', 
@@ -49,7 +53,7 @@ def create_ceph_s3_user(project, username,  user_type="subuser", access_type="re
             cmd_output=subprocess.check_call(cmd, stdout=open(os.devnull, 'wb') ) 
 
         except subprocess.CalledProcessError, e:
-            sys.stderr.write("Error creating  new rados key for tenant:  %s\n" % project )
+            sys.stderr.write("ERROR: create_ceph_s3_user creating for user: %s\n" % (index) )
             sys.stderr.write("%s\n" % e.output)
             return False
 
@@ -79,7 +83,7 @@ def get_ceph_s3_key(project, username, user_type="subuser", debug=None,run=None)
    
         if user_type == "project":
             if debug:
-                sys.stderr.write("INFO: FND project to have s3 user, %s ,in ceph already.\n"%(index))
+                sys.stderr.write("INFO: Found project, %s ,in ceph already.\n"%(index))
             return True
  
         if user_type == "subuser":
@@ -101,7 +105,7 @@ def get_ceph_s3_key(project, username, user_type="subuser", debug=None,run=None)
         try:
             if keys[index]:
                 if debug:
-                    sys.stderr.write("INFO: FND project:subuser to have s3 user, %s ,in ceph.\n"%(index))
+                    sys.stderr.write("INFO: Found project:subuser to have s3 user, %s ,in ceph.\n"%(index))
                 return keys[index]
             else:
                 return None
@@ -124,6 +128,8 @@ def write_s3_creds_to_file( project, username, user_keys, debug=None, run=None):
         creds_file.write( "access_key=%s\n"%(user_keys['access_key']) )
         creds_file.write( "secret_key=%s\n"%(user_keys['secret_key']) )
     creds_file.close()
+
+    os.chown( creds_file_path, pwd.getpwnam(username).pw_uid, -1 )
 
 
 
@@ -157,14 +163,14 @@ if __name__ == "__main__":
 
 
 
-if not get_ceph_s3_key(project, username, user_type="project",  debug=True,run=run):
+if not get_ceph_s3_key(project, username, user_type="project",  debug=debug,run=run):
     create_ceph_s3_user(project, username, user_type="project", debug=debug,run=run) 
 
-user_keys=get_ceph_s3_key(project, username, user_type="subuser", debug=True,run=run) 
+user_keys=get_ceph_s3_key(project, username, user_type="subuser", debug=debug,run=run) 
 
 if not user_keys:
     create_ceph_s3_user(project, username, user_type="subuser", debug=debug,run=run) 
-    user_keys=get_ceph_s3_key(project, username, user_type="subuser", debug=True,run=run) 
+    user_keys=get_ceph_s3_key(project, username, user_type="subuser", debug=debug,run=run) 
 
 write_s3_creds_to_file(project,username, user_keys=user_keys,debug=debug,run=run)
 

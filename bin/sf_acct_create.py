@@ -12,13 +12,23 @@ from sqlalchemy import create_engine, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
 
-def create_ceph_s3_creds(tenant, username,  debug=None, run=None):
-    """ Create the s3creds for a the tenant, generally only called for quota leader"""
+def create_ceph_s3_creds(tenant, username, ceph_auth_type=None,  debug=None, run=None):
+    """ Create the s3creds for a the tenant, generally only called for quota leader
+        user_type: [keystone]|ceph .If object store uses keystone or ceph method for user creation.  
+        Keystone doesnt create user till first objectis written and so we do silly stuff.
+    """
 
-    cmd = [ '/usr/local/sbin/create_ceph_s3_creds.sh', tenant , username ]
+    if ceph_auth_type == "ceph_ceph":
+        cmd = [ '/usr/local/sbin/create_ceph_s3_creds-native.py', tenant , username ]
+
+    elif ceph_auth_type == "ceph_keystone":
+        cmd = [ '/usr/local/sbin/create_ceph_s3_creds.sh', tenant , username ]
+    else:
+        return False
 
     #Set quota
     if debug:
+        print "INFO: %s cmd:" % (__name__) 
         pprint.pprint(cmd)
 
     if run:
@@ -48,7 +58,7 @@ def create_tenant(tenant, debug=None, run=None):
     """ call the bash scripts to create tenants """
     if run:
         try:
-            subprocess.check_call( ['/usr/bin/keystone','tenant-create', '--name=%s'%(tenant)], stdout=open(os.devnull, 'wb') )
+            subprocess.check_call( ['/usr/bin/keystone','tenant-create', '--name=%s'%(tenant)], stdout=open(os.devnull, 'wb'),stderr=open(os.devnull, 'wb') )
             return True
         except subprocess.CalledProcessError, e:
             sys.stderr.write("Error creating  new tenant:  %s\n" % username )
@@ -87,7 +97,6 @@ def create_user(username, fields, debug=None,run=None,create_s3_creds=False):
             pprint.pprint(cmd)
             pprint.pprint(fields)
         if run:
-            print(str(cmd))
             result = subprocess.check_call( cmd )
             return True
         else:
@@ -110,10 +119,16 @@ def set_quota(username, tenant, quota_type, quota_value, debug=None,run=None):
                 "-v %s" % (10 + quota_value/2),
                 "-s %s" % (10 + quota_value/2),
             ]
-    elif quota_type == 'ceph_swift':
+    elif quota_type == 'ceph_keystone':
         # Command takes units in bytes
-        cmd = ["/usr/local/sbin/update_ceph_quotas.sh",
+        cmd = ["/usr/local/sbin/update_ceph_s3_quotas.sh",
                 "%s" % username,
+                "%s" % tenant,
+                "%s" % quota_value,
+            ]
+    elif quota_type == 'ceph_ceph':
+        # Command takes units in bytes
+        cmd = ["/usr/local/sbin/update_ceph_s3_quotas-native.sh",
                 "%s" % tenant,
                 "%s" % quota_value,
             ]
@@ -240,13 +255,13 @@ def remove_member_from_tenant(tenant=None, users=None, role="_member_", debug=No
 
         if run:
             try:
-                result = subprocess.check_call( cmd )
+                result = subprocess.check_call( cmd , stderr=open(os.devnull, 'wb'))
             except subprocess.CalledProcessError, e:
                 sys.stderr.write("Error: Removing  user %s to tenant %s\n" % (username,tenant) )
                 sys.stderr.write("%s\n" % e.output)
         
 
-def add_member_to_tenant(tenant=None, users=None, role="_member_", debug=None, run=None,create_s3_creds=False):
+def add_member_to_tenant(tenant=None, users=None, role="_member_", ceph_auth_type=None, debug=None, run=None,create_s3_creds=False):
     """ Add users to the tenant """  
     for user in users:
         print "INFO: Adding user %s to tenant %s" % (user, tenant)
@@ -263,16 +278,16 @@ def add_member_to_tenant(tenant=None, users=None, role="_member_", debug=None, r
 
         if run:
             try:
-                result = subprocess.check_call( cmd )
+                result = subprocess.check_call( cmd, stderr=open(os.devnull, 'wb')  )
             except subprocess.CalledProcessError, e:
                 sys.stderr.write("Error: Adding  user %s to tenant %s\n" % (user,tenant) )
                 sys.stderr.write("%s\n" % e.output)
 
             if create_s3_creds:
-                create_ceph_s3_creds(tenant=tenant,username=user,debug=debug,run=run)
+                create_ceph_s3_creds(tenant=tenant,username=user,ceph_auth_type=ceph_auth_type,debug=debug,run=run)
             
 
-def adjust_managed_tenants(managed_tenants=None,debug=None,run=None):
+def adjust_managed_tenants(managed_tenants=None,ceph_auth_type=None,debug=None,run=None):
     #Fix the tenants for manged groups
     #csv_tenant_members = 
     #approved_tenant_members
@@ -303,9 +318,9 @@ def adjust_managed_tenants(managed_tenants=None,debug=None,run=None):
             pprint.pprint( additional_tenant_members ) 
        
         remove_member_from_tenant(tenant=tenant_name, users=invalid_tenant_members, debug=debug, run=run)
-        add_member_to_tenant(tenant=tenant_name, users=additional_tenant_members, debug=debug, run=run)
+        add_member_to_tenant(tenant=tenant_name, users=additional_tenant_members,ceph_auth_type=ceph_auth_type, debug=debug, run=run)
 
-def adjust_tenants(members_list=None,debug=None,run=None,create_s3_creds=False):
+def adjust_tenants(members_list=None,ceph_auth_type=None,debug=None,run=None,create_s3_creds=False):
     #Build tenant lists
     for username, fields in members_list.items():
         if fields['tenant'] not in tenant_members:
@@ -359,7 +374,7 @@ def adjust_quotas(members_list=None,debug=None,run=None):
         #Set storage quota if leader
         if user_exists and fields['quota_leader']:
             if ( fields['object_storage_quota'] or fields['object_storage_quota']==0) and set_ceph_quota:
-                set_quota(username=username, tenant=fields['tenant'], quota_type="ceph_swift", quota_value=fields['object_storage_quota'], debug=debug,run=run)
+                set_quota(username=username, tenant=fields['tenant'], quota_type=ceph_auth_type, quota_value=fields['object_storage_quota'], debug=debug,run=run)
 
             if ( fields['block_storage_quota'] or fields['block_storage_quota']==0 ) and set_cinder_quota:
                 #takes quota in GibaBytes
@@ -385,11 +400,12 @@ if __name__ == "__main__":
     approved_members = set()
     tenant_members = dict()
     set_ceph_quota = True
-    create_s3_creds = True
+    create_s3_creds = False
     set_cinder_quota = True
+    ceph_auth_type = None
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota", "nocephs3","nocinderquota"])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota", "ceph-keystone-s3", "ceph-native-s3", "nocinderquota"])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -403,12 +419,18 @@ if __name__ == "__main__":
             nih_approved_users = {}
         elif opt in ("--notukey"):
             tukey = False
-        elif opt in ("--nocephquota"):
-            set_ceph_quota = False
-        elif opt in ("--nocephs3"):
-            create_s3_creds = False
         elif opt in ("--nocinderquota"):
             set_cinder_quota = False
+        elif opt in ("--nocephquota"):
+            set_ceph_quota = False
+        #ceph-keystone-s3 uses keystone/swift with ceph object store (legacy)
+        elif opt in ("--ceph-keystone-s3"):
+            create_s3_creds = True
+            ceph_auth_type="ceph_keystone"
+        #ceph-native-s3 uses radosgw-admin for direct creation of s3 users/subusers via ceph api
+        elif opt in ("--ceph-native-s3"):
+            create_s3_creds = True
+            ceph_auth_type="ceph_ceph"
 	
 
     sfocc = SalesForceOCC()
@@ -535,7 +557,7 @@ if __name__ == "__main__":
                             user_created = create_user(username=username,fields=fields, debug=debug, run=run)
                             add_member_to_tenant(role='quota_leader', tenant=fields['tenant'],users=[username], debug=debug, run=run)
                             if create_s3_creds:
-                                create_ceph_s3_creds(tenant=fields['tenant'],username=username,debug=debug,run=run)
+                                create_ceph_s3_creds(tenant=fields['tenant'],username=username,ceph_auth_type=ceph_auth_type,debug=debug,run=run)
                         else:
                             sys.stderr.write("ERROR: Creating new tenant %s skipping user creation.\n" % fields['tenant'] )
                     else:
@@ -548,7 +570,7 @@ if __name__ == "__main__":
                 print "INFO: Creating users %s" % username
                 create_user(username=username,fields=fields, debug=debug, run=run)
                 if create_s3_creds:
-                    create_ceph_s3_creds(tenant=fields['tenant'],username=username,debug=debug,run=run)
+                    create_ceph_s3_creds(tenant=fields['tenant'],ceph_auth_type=ceph_auth_type,username=username,debug=debug,run=run)
 
     #Apply Quotas
     print "Setting Quotas"
@@ -556,7 +578,7 @@ if __name__ == "__main__":
 
     #adjust tenants and subtenant membership        
     print "Adjusting tenant membership"
-    adjust_tenants(members_list=members_list,debug=debug,run=run,create_s3_creds=create_s3_creds)     
+    adjust_tenants(members_list=members_list,debug=debug,run=run,create_s3_creds=create_s3_creds,ceph_auth_type=ceph_auth_type)     
 
     #Lock users
     print "Locking/Unlocking Users:"
@@ -567,6 +589,6 @@ if __name__ == "__main__":
     toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,debug=debug) 
 
     print "Adjusting managed tenant membership:" 
-    adjust_managed_tenants(managed_tenants=managed_tenants,debug=debug,run=run)
+    adjust_managed_tenants(managed_tenants=managed_tenants,ceph_auth_type=ceph_auth_type, debug=debug,run=run)
 
     

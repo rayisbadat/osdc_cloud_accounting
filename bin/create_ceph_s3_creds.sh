@@ -49,7 +49,7 @@ touch_initial_file() {
 
 
 find_tenant_uuid() {
-    tenant_uuid=$(keystone tenant-get $tenant | perl -n -e'm/\|\s+id\s+\|\s+(\S+)\s+\|/ && print "$1"')
+    tenant_uuid=$(keystone tenant-get $tenant 2>/dev/null | perl -n -e'm/\|\s+id\s+\|\s+(\S+)\s+\|/ && print "$1"')
 }
 
     
