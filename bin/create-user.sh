@@ -26,7 +26,7 @@ then
 	exit 1	
 fi
 
-/usr/local/sbin/create-cloud-user.sh "$USERNAME" "$TENANT" "$PASSWD" "$EMAIL" "$HOME_DIR"
+/usr/local/sbin/create-cloud-user.sh "$USERNAME" "$TENANT" "$PASSWD" "$EMAIL" "$HOME_DIR" "$CLOUD"
 if [ $? -ne 0 ]
 then
 	echo "$0: create-cloud-user failed"

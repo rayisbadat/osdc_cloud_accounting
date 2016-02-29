@@ -193,16 +193,20 @@ def toggle_user_locks(approved_members=None, starting_uid=1500, debug=None):
             sys.stderr.write("%s\n" % e.output)
 
 
-def get_tenant_members(tenant=None):
+def get_tenant_members(tenant=None,cloud=None):
     """ Return list of users in a tenant, the client API wants the user we run as to be a member of every tenant we query :( """
+
     query = """select c.name as User_Name
         from keystone.project a
             join keystone.assignment b
                 on b.target_id = a.id
             join keystone.user c
                 on b.actor_id = c.id
-        where a.name='%s';
-        """ % tenant
+        where 
+            a.name='%s'
+            and
+            c.extra like '{"email": "CLOUD:%s%%,'
+        """ % (tenant,cloud)
 
     members = set()
 
@@ -287,7 +291,7 @@ def add_member_to_tenant(tenant=None, users=None, role="_member_", ceph_auth_typ
                 create_ceph_s3_creds(tenant=tenant,username=user,ceph_auth_type=ceph_auth_type,debug=debug,run=run)
             
 
-def adjust_managed_tenants(managed_tenants=None,ceph_auth_type=None,debug=None,run=None):
+def adjust_managed_tenants(managed_tenants=None,cloud=None,ceph_auth_type=None,debug=None,run=None):
     #Fix the tenants for manged groups
     #csv_tenant_members = 
     #approved_tenant_members
@@ -302,7 +306,7 @@ def adjust_managed_tenants(managed_tenants=None,ceph_auth_type=None,debug=None,r
         #Intersection of CSV and SalesForce
         approved_tenant_members = csv_tenant_members.intersection( approved_members )
         #Current users in tenant
-        current_tenant_members = get_tenant_members(tenant=tenant_name)
+        current_tenant_members = get_tenant_members(tenant=tenant_name,cloud=cloud)
         #Keep these user in tenant, they are still valid
         valid_tenant_members = current_tenant_members.intersection(approved_tenant_members)
         #We need to remove these users from the tenant
@@ -320,7 +324,7 @@ def adjust_managed_tenants(managed_tenants=None,ceph_auth_type=None,debug=None,r
         remove_member_from_tenant(tenant=tenant_name, users=invalid_tenant_members, debug=debug, run=run)
         add_member_to_tenant(tenant=tenant_name, users=additional_tenant_members,ceph_auth_type=ceph_auth_type, debug=debug, run=run)
 
-def adjust_tenants(members_list=None,ceph_auth_type=None,debug=None,run=None,create_s3_creds=False):
+def adjust_tenants(members_list=None,cloud=None,ceph_auth_type=None,debug=None,run=None,create_s3_creds=False):
     #Build tenant lists
     for username, fields in members_list.items():
         if fields['tenant'] not in tenant_members:
@@ -341,7 +345,7 @@ def adjust_tenants(members_list=None,ceph_auth_type=None,debug=None,run=None,cre
         members=tenant_members[tenant]
 
         #Build lists of who is currently, needs to be added, needs to be removed
-        current_members=get_tenant_members(tenant)
+        current_members=get_tenant_members(tenant,cloud)
         members_to_add=set(members)-set(current_members)
         members_to_remove=set(current_members)-set(members)
 
@@ -462,6 +466,7 @@ if __name__ == "__main__":
     except:
         pass
 
+
     #Load up a list of the users in SF that are approved for this cloud
     sfocc.login(username=settings['salesforceocc']['sfusername'], password=settings['salesforceocc']['sfpassword'])
     contacts = sfocc.get_contacts_from_campaign(campaign_name=settings['salesforceocc']['campaign'],  statuses=["Approved User", "Application Pending","CDIS System User"])
@@ -578,7 +583,7 @@ if __name__ == "__main__":
 
     #adjust tenants and subtenant membership        
     print "Adjusting tenant membership"
-    adjust_tenants(members_list=members_list,debug=debug,run=run,create_s3_creds=create_s3_creds,ceph_auth_type=ceph_auth_type)     
+    adjust_tenants(members_list=members_list,cloud=settings['general']['cloud'],debug=debug,run=run,create_s3_creds=create_s3_creds,ceph_auth_type=ceph_auth_type)     
 
     #Lock users
     print "Locking/Unlocking Users:"
@@ -589,6 +594,6 @@ if __name__ == "__main__":
     toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,debug=debug) 
 
     print "Adjusting managed tenant membership:" 
-    adjust_managed_tenants(managed_tenants=managed_tenants,ceph_auth_type=ceph_auth_type, debug=debug,run=run)
+    adjust_managed_tenants(managed_tenants=managed_tenants,cloud=settings['general']['cloud'],ceph_auth_type=ceph_auth_type, debug=debug,run=run)
 
     

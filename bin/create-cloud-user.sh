@@ -33,9 +33,10 @@ TENANT=$2
 PASSWORD=$3
 EMAIL=$4
 HOME_DIR=$5
-if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$EMAIL" ] || [ -z "$HOME_DIR" ] || [ -z "$TENANT" ]
+CLOUD_NAME=$6
+if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$EMAIL" ] || [ -z "$HOME_DIR" ] || [ -z "$TENANT" ] || [ -z "$CLOUD_NAME" ]
 then
-	echo "Usage: $0 Username Tenant Password Email Home_Directory_Path STORAGE_QUOTA"
+	echo "Usage: $0 Username Tenant Password Email Home_Directory_Path Cloud_Name"
 	exit 1
 fi
 
@@ -45,9 +46,10 @@ function get_id () {
 
 NEW_TENANT=$(keystone tenant-get $TENANT 2>/dev/null | grep id | tr -s " " | cut -d" " -f4)
 
+extra_specs="CLOUD:$CLOUD_NAME,EMAIL:$EMAIL"
 NEW_USER=$(get_id /usr/bin/keystone user-create --name=$USERNAME \
                                         --pass="$PASSWORD" \
-                                        --email=$EMAIL 2>/dev/null)
+                                        --email=$extra_specs 2>/dev/null)
                                         
 # The Member role is used by Horizon and Swift so we need to keep it:                                 
 /usr/bin/keystone user-role-add --user $NEW_USER --role $MEMBER_ROLE --tenant_id $NEW_TENANT &>/dev/null
@@ -60,7 +62,7 @@ fi
 credential_file="$HOME_DIR/.novarc"
 touch $credential_file
 
-IDENTITY_URL=$(/usr/bin/keystone catalog --service identity 2>/dev/null | awk '/ publicURL / { print $4 }')
+IDENTITY_URL=$(/usr/bin/keystone catalog --service identity 2>/dev/null | awk '/ publicURL / { print $4 }' | head -n1)
 
 echo "export OS_TENANT_NAME=$TENANT" >> $credential_file
 echo "export OS_USERNAME=$USERNAME" >> $credential_file
