@@ -6,16 +6,23 @@ EMAIL=${4}
 PASSWD=$(pwgen 20 1)
 HOME_DIR=/home/$USERNAME
 METHOD=$5
-CLOUD=$6
+TUKEY_CLOUD_NAME=$6
+CLOUD_NAME=$7
 
 #Check that we have the required number of params
 if   [ -z "$NAME" ]  ||  [ -z "$USERNAME" ] || [ -z "$PASSWD" ] || [ -z "$EMAIL" ] || [ -z "$METHOD" ] || [ -z "$CLOUD" ] || [ -z "$TENANT" ]
 then
-	echo "Usage: $0 ACTUAL_NAME USER_NAME TENANT EMAIL METHOD CLOUD "
+	echo "Usage: $0 ACTUAL_NAME USER_NAME TENANT EMAIL METHOD TUKEY_NAME [CLOUD_NAME] "
 	echo "Please be sure the group already exists in ldap"
     echo "METHOD: shibboleth, era, openid"
-    echo "CLOUD: sullivan, atwood, adler, goldberg, tcga"
+    echo "TUKEY_NAME: sullivan, atwood, adler, goldberg, tcga"
+    echo "Cloud Name: Cloud  Name as in conf file settings['general']['cloud']"
 	exit 1
+fi
+
+if [ -z "CLOUD_NAME" ]
+then
+    CLOUD_NAME=${TUKEY_CLOUD_NAME}  
 fi
 
 /usr/local/sbin/create-ldap-user.sh "$NAME" "$USERNAME" "$PASSWD" "$HOME_DIR"
@@ -26,7 +33,7 @@ then
 	exit 1	
 fi
 
-/usr/local/sbin/create-cloud-user.sh "$USERNAME" "$TENANT" "$PASSWD" "$EMAIL" "$HOME_DIR" "$CLOUD"
+/usr/local/sbin/create-cloud-user.sh "$USERNAME" "$TENANT" "$PASSWD" "$EMAIL" "$HOME_DIR" "$CLOUD_NAME"
 if [ $? -ne 0 ]
 then
 	echo "$0: create-cloud-user failed"
@@ -34,7 +41,7 @@ then
     exit 1
 fi
 
-/usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
+/usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$TUKEY_CLOUD_NAME"
 if [ $? -ne 0 ]
 then
 	echo "$0: create-gui-creds failed"

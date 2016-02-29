@@ -67,7 +67,7 @@ def create_tenant(tenant, debug=None, run=None):
     else:
         return True
 
-def create_user(username, fields, debug=None,run=None,create_s3_creds=False):
+def create_user(username,cloud,fields, debug=None,run=None,create_s3_creds=False):
     """ Call create user script """
     if fields['Authentication_Method'] == 'OpenID':
         method = 'openid'
@@ -91,6 +91,8 @@ def create_user(username, fields, debug=None,run=None,create_s3_creds=False):
         login_identifier,
         method,
         settings['tukey']['cloud'],
+        cloud
+        
     ]
     try:
         if debug:
@@ -193,7 +195,7 @@ def toggle_user_locks(approved_members=None, starting_uid=1500, debug=None):
             sys.stderr.write("%s\n" % e.output)
 
 
-def get_tenant_members(tenant=None,cloud=None):
+def get_tenant_members(tenant=None,cloud=None,debug=None):
     """ Return list of users in a tenant, the client API wants the user we run as to be a member of every tenant we query :( """
 
     query = """select c.name as User_Name
@@ -205,10 +207,13 @@ def get_tenant_members(tenant=None,cloud=None):
         where 
             a.name='%s'
             and
-            c.extra like '{"email": "CLOUD:%s%%,'
+            c.extra like '{"email": "CLOUD:%s,%%'
         """ % (tenant,cloud)
 
     members = set()
+
+    if debug:
+        print query
 
     try:
         conn = db_connect(settings['accounts']['novadb'])
@@ -306,7 +311,7 @@ def adjust_managed_tenants(managed_tenants=None,cloud=None,ceph_auth_type=None,d
         #Intersection of CSV and SalesForce
         approved_tenant_members = csv_tenant_members.intersection( approved_members )
         #Current users in tenant
-        current_tenant_members = get_tenant_members(tenant=tenant_name,cloud=cloud)
+        current_tenant_members = get_tenant_members(tenant=tenant_name,cloud=cloud,debug=debug)
         #Keep these user in tenant, they are still valid
         valid_tenant_members = current_tenant_members.intersection(approved_tenant_members)
         #We need to remove these users from the tenant
@@ -345,7 +350,7 @@ def adjust_tenants(members_list=None,cloud=None,ceph_auth_type=None,debug=None,r
         members=tenant_members[tenant]
 
         #Build lists of who is currently, needs to be added, needs to be removed
-        current_members=get_tenant_members(tenant,cloud)
+        current_members=get_tenant_members(tenant,cloud,debug=debug)
         members_to_add=set(members)-set(current_members)
         members_to_remove=set(current_members)-set(members)
 
@@ -559,7 +564,7 @@ if __name__ == "__main__":
                         print "INFO: Creating new tenant %s" % (fields['tenant'])
                         if create_tenant(tenant=fields['tenant'], debug=debug,run=run):
                             print "INFO: Creating users %s" % username
-                            user_created = create_user(username=username,fields=fields, debug=debug, run=run)
+                            user_created = create_user(username=username,cloud=settings['general']['cloud'], fields=fields, debug=debug, run=run)
                             add_member_to_tenant(role='quota_leader', tenant=fields['tenant'],users=[username], debug=debug, run=run)
                             if create_s3_creds:
                                 create_ceph_s3_creds(tenant=fields['tenant'],username=username,ceph_auth_type=ceph_auth_type,debug=debug,run=run)
@@ -573,7 +578,7 @@ if __name__ == "__main__":
             #Create the user in existing tenant
             if username and not user_created:
                 print "INFO: Creating users %s" % username
-                create_user(username=username,fields=fields, debug=debug, run=run)
+                create_user(username=username,cloud=settings['general']['cloud'],fields=fields, debug=debug, run=run)
                 if create_s3_creds:
                     create_ceph_s3_creds(tenant=fields['tenant'],ceph_auth_type=ceph_auth_type,username=username,debug=debug,run=run)
 
