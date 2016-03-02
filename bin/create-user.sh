@@ -10,7 +10,7 @@ TUKEY_CLOUD_NAME=$6
 CLOUD_NAME=$7
 
 #Check that we have the required number of params
-if   [ -z "$NAME" ]  ||  [ -z "$USERNAME" ] || [ -z "$PASSWD" ] || [ -z "$EMAIL" ] || [ -z "$METHOD" ] || [ -z "$CLOUD" ] || [ -z "$TENANT" ]
+if   [ -z "$NAME" ]  ||  [ -z "$USERNAME" ] || [ -z "$TENANT" ] || [ -z "$EMAIL" ] || [ -z "$PASSWD" ] || [ -z "$HOME_DIR" ] || [ -z "$METHOD" ] || [ -z "$TUKEY_CLOUD_NAME" ]
 then
 	echo "Usage: $0 ACTUAL_NAME USER_NAME TENANT EMAIL METHOD TUKEY_NAME [CLOUD_NAME] "
 	echo "Please be sure the group already exists in ldap"

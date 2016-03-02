@@ -36,7 +36,9 @@ fi
 
 if [ -z "$IPS" ]
 then
-    nova-manage account quota --project=${tennant_id}
+    #nova-manage account quota --project=${tennant_id}
+    nova quota-show --tenant  ${tennant_id}
+    
     exit 0
 fi
 

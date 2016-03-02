@@ -195,7 +195,7 @@ def toggle_user_locks(approved_members=None, starting_uid=1500, debug=None):
             sys.stderr.write("%s\n" % e.output)
 
 
-def get_tenant_members(tenant=None,cloud=None,debug=None):
+def get_tenant_members(tenant=None,users_cloud=None,debug=None):
     """ Return list of users in a tenant, the client API wants the user we run as to be a member of every tenant we query :( """
 
     query = """select c.name as User_Name
@@ -206,9 +206,10 @@ def get_tenant_members(tenant=None,cloud=None,debug=None):
                 on b.actor_id = c.id
         where 
             a.name='%s'
-            and
-            c.extra like '{"email": "CLOUD:%s,%%'
-        """ % (tenant,cloud)
+        """ % (tenant)    
+
+    if users_cloud:
+        query += """ and c.extra like '{"email": "CLOUD:%s,%%'""" % (users_cloud)
 
     members = set()
 
@@ -296,7 +297,7 @@ def add_member_to_tenant(tenant=None, users=None, role="_member_", ceph_auth_typ
                 create_ceph_s3_creds(tenant=tenant,username=user,ceph_auth_type=ceph_auth_type,debug=debug,run=run)
             
 
-def adjust_managed_tenants(managed_tenants=None,cloud=None,ceph_auth_type=None,debug=None,run=None):
+def adjust_managed_tenants(managed_tenants=None,users_cloud=None,ceph_auth_type=None,debug=None,run=None):
     #Fix the tenants for manged groups
     #csv_tenant_members = 
     #approved_tenant_members
@@ -311,7 +312,7 @@ def adjust_managed_tenants(managed_tenants=None,cloud=None,ceph_auth_type=None,d
         #Intersection of CSV and SalesForce
         approved_tenant_members = csv_tenant_members.intersection( approved_members )
         #Current users in tenant
-        current_tenant_members = get_tenant_members(tenant=tenant_name,cloud=cloud,debug=debug)
+        current_tenant_members = get_tenant_members(tenant=tenant_name,users_cloud=users_cloud,debug=debug)
         #Keep these user in tenant, they are still valid
         valid_tenant_members = current_tenant_members.intersection(approved_tenant_members)
         #We need to remove these users from the tenant
@@ -329,7 +330,7 @@ def adjust_managed_tenants(managed_tenants=None,cloud=None,ceph_auth_type=None,d
         remove_member_from_tenant(tenant=tenant_name, users=invalid_tenant_members, debug=debug, run=run)
         add_member_to_tenant(tenant=tenant_name, users=additional_tenant_members,ceph_auth_type=ceph_auth_type, debug=debug, run=run)
 
-def adjust_tenants(members_list=None,cloud=None,ceph_auth_type=None,debug=None,run=None,create_s3_creds=False):
+def adjust_tenants(members_list=None,users_cloud=None,ceph_auth_type=None,debug=None,run=None,create_s3_creds=False):
     #Build tenant lists
     for username, fields in members_list.items():
         if fields['tenant'] not in tenant_members:
@@ -350,7 +351,7 @@ def adjust_tenants(members_list=None,cloud=None,ceph_auth_type=None,debug=None,r
         members=tenant_members[tenant]
 
         #Build lists of who is currently, needs to be added, needs to be removed
-        current_members=get_tenant_members(tenant,cloud,debug=debug)
+        current_members=get_tenant_members(tenant,users_cloud=users_cloud,debug=debug)
         members_to_add=set(members)-set(current_members)
         members_to_remove=set(current_members)-set(members)
 
@@ -412,6 +413,7 @@ if __name__ == "__main__":
     create_s3_creds = False
     set_cinder_quota = True
     ceph_auth_type = None
+    multicloud = False
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota", "ceph-keystone-s3", "ceph-native-s3", "nocinderquota"])
@@ -440,6 +442,9 @@ if __name__ == "__main__":
         elif opt in ("--ceph-native-s3"):
             create_s3_creds = True
             ceph_auth_type="ceph_ceph"
+        #Some of our clouds share backends but have different frontends, this scans for this marker
+        elif opt in ("--multicloud"):
+            multicloud=True
 	
 
     sfocc = SalesForceOCC()
@@ -470,6 +475,12 @@ if __name__ == "__main__":
                 pprint.pprint( managed_tenants )
     except:
         pass
+
+    if multicloud:
+        users_cloud = settings['general']['cloud']
+    else:
+        users_cloud = None
+    
 
 
     #Load up a list of the users in SF that are approved for this cloud
@@ -588,7 +599,7 @@ if __name__ == "__main__":
 
     #adjust tenants and subtenant membership        
     print "Adjusting tenant membership"
-    adjust_tenants(members_list=members_list,cloud=settings['general']['cloud'],debug=debug,run=run,create_s3_creds=create_s3_creds,ceph_auth_type=ceph_auth_type)     
+    adjust_tenants(members_list=members_list,users_cloud=users_cloud,debug=debug,run=run,create_s3_creds=create_s3_creds,ceph_auth_type=ceph_auth_type)     
 
     #Lock users
     print "Locking/Unlocking Users:"
@@ -599,6 +610,6 @@ if __name__ == "__main__":
     toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,debug=debug) 
 
     print "Adjusting managed tenant membership:" 
-    adjust_managed_tenants(managed_tenants=managed_tenants,cloud=settings['general']['cloud'],ceph_auth_type=ceph_auth_type, debug=debug,run=run)
+    adjust_managed_tenants(managed_tenants=managed_tenants,users_cloud=users_cloud,ceph_auth_type=ceph_auth_type, debug=debug,run=run)
 
     
