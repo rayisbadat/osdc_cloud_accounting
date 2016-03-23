@@ -416,7 +416,7 @@ if __name__ == "__main__":
     multicloud = False
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota", "ceph-keystone-s3", "ceph-native-s3", "nocinderquota"])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota", "ceph-keystone-s3", "ceph-native-s3", "nocinderquota","multicloud"])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
