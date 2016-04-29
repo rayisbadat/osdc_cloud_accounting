@@ -70,14 +70,14 @@ if __name__ == "__main__":
         elif opt in ("--thisweek"):
             now = datetime.now()
             year = int(now.strftime("%Y"))
-            week = int(now.strftime("%U")) + 1
+            week = int(now.strftime("%U"))
             weekbeg, weekend = weekbegend(year, week)
             start_date = weekbeg.strftime("%Y-%m-%d 00:00:00")
             end_date = weekend.strftime("%Y-%m-%d 23:59:59")
         elif opt in ("--lastweek"):
             now = datetime.now()
             year = int(now.strftime("%Y"))
-            week = int(now.strftime("%U"))
+            week = int(now.strftime("%U")) - 1
             weekbeg, weekend = weekbegend(year, week)
             start_date = weekbeg.strftime("%Y-%m-%d 00:00:00")
             end_date = weekend.strftime("%Y-%m-%d 23:59:59")
