@@ -12,10 +12,10 @@ import json
 import pprint
 
 
-def create_ceph_s3_user(project, username,  user_type="subuser", access_type="readwrite", debug=None, run=None):
+def create_ceph_s3_user(project, username,  user_type="subuser", access_type="full", debug=None, run=None):
     """ Create the s3creds for a the project or subuser
         user_type=[subuser]|project
-        access_type=[readwrite]|readonly
+        access_type=[full]|readwrite|readonly
     """
 
 
@@ -63,7 +63,7 @@ def get_ceph_s3_key(project, username, user_type="subuser", debug=None,run=None)
     """ Get the s3creds for a the project or subuser
         If it doesnt exist return None
         user_type=[subuser]|project
-        access_type=[readwrite]|readonly
+        access_type=[full]|readwrite|readonly
     """
 
     cmd = [ 'radosgw-admin', 'user', 'info', "--uid=%s"%(project) ]
