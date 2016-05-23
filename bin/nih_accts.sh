@@ -27,7 +27,7 @@ create_users(){
     then
 	source /usr/local/src/.SFACCT/bin/activate
     source /etc/osdc_cloud_accounting/admin_auth 
-	echo /usr/local/src/osdc_cloud_accounting/bin/sf_acct_create.py --nihfile $compiled_output_file --nocephquota --nocinderquota
+    /usr/local/src/osdc_cloud_accounting/bin/sf_acct_create.py --nihfile $compiled_output_file --nocephquota --nocinderquota --multicloud  --ceph-keystone-s3
     fi
 }
 download_file
