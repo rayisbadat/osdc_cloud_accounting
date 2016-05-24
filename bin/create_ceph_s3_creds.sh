@@ -85,7 +85,7 @@ compare_hashes() {
 service nscd restart &>/dev/null || /bin/true
 sleep 5s
 
-#touch_initial_file
+touch_initial_file
 find_tenant_uuid
 create_s3_creds
 write_out_creds

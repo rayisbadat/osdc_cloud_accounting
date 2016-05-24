@@ -67,7 +67,7 @@ def create_tenant(tenant, debug=None, run=None):
     else:
         return True
 
-def create_user(username,cloud,fields, debug=None,run=None,create_s3_creds=False):
+def create_user(username,cloud,fields, debug=None,run=None):
     """ Call create user script """
     if fields['Authentication_Method'] == 'OpenID':
         method = 'openid'
@@ -208,8 +208,8 @@ def get_tenant_members(tenant=None,users_cloud=None,debug=None):
             a.name='%s'
         """ % (tenant)    
 
-    if users_cloud:
-        query += """ and c.extra like '{"email": "CLOUD:%s,%%'""" % (users_cloud)
+    #if users_cloud:
+    #    query += """ and c.extra like '{"email": "CLOUD:%s,%%'""" % (users_cloud)
 
     members = set()
 
@@ -380,6 +380,9 @@ def adjust_quotas(members_list=None,debug=None,run=None):
             user_exists = pwd.getpwnam(username)
         except:
             user_exists = None
+        if debug:
+            print "DEBUG: Username %s exists? %s " % (username,user_exists) 
+
 
         #Set storage quota if leader
         if user_exists and fields['quota_leader']:
@@ -400,12 +403,111 @@ def adjust_quotas(members_list=None,debug=None,run=None):
                 set_quota(username=username, tenant=fields['tenant'], quota_type="ram", quota_value=ram_quota, debug=debug,run=run)
 
 
+
+def load_in_nih_file(settings=None,nih_approved_users=None,managed_tenants=None,members_list=None):
+    #Load up a nih style csv of approved users.
+    #user_name is the actual human name
+    #login is the name we care about.
+    #phsid is also important eventually
+        
+        if debug:
+            print "DEBUG: load_in_nih_file maned_tenants start:" 
+            pprint.pprint(settings['accounts']['managed_tenants'])
+
+        try:
+            with open(nih_file, 'r') as handle:
+                reader = csv.DictReader(handle, ['user_name', 'login', 'authority', 'role', 'email', 'phone',' status', 'phsid', 'permission_set', 'created', 'updated', 'expires', 'downloader_for'])
+                # Loop through csv and load the user info
+                # we are loading the phsids as an array
+                for row in reader:
+                    try:
+                        if type(nih_approved_users[row['login'].upper()]) is not list:
+                            nih_approved_users[row['login'].upper()]=[]
+                    except KeyError:
+                        nih_approved_users[row['login'].upper()]=[]
+                    #add in phsid to array
+                    nih_approved_users[row['login'].upper()].append(row['phsid'])
+
+                    #Create a list of who belongs to what managed tenant for later parsing
+                    if row['phsid'].split(".")[0] in settings['accounts']['managed_tenants']:
+                        managed_tenants[row['phsid'].split(".")[0]].add(row['login'].upper())
+
+                if debug:
+                    print "DEBUG: load_in_nih_file maned_tenants middle:" 
+                    pprint.pprint(managed_tenants)
+
+
+                for username, fields in members_list.items():
+                    #Nih style changes....i am doing this wrong
+                    if nih_file:
+                        if fields['eRA_Commons_username'].upper()  in nih_approved_users:
+                            new_username=fields['eRA_Commons_username'].upper()
+                            members_list[new_username] = members_list.pop( username )
+                            members_list[new_username]['username'] = new_username
+                            members_list[new_username]['login_identifier'] = "urn:mace:incommon:nih.gov!https://bionimbus-pdc.opensciencedatacloud.org/shibboleth!%s"%(new_username)
+                        else:
+                            continue
+                if debug:
+                    print "DEBUG: nih style members_list:" 
+                    pprint.pprint(members_list)
+                        
+        except IOError as e:
+            sys.exit('file %s not found: %s' % (nih_file, e))
+        except csv.Error as e:
+            sys.exit('file %s, line %d: %s' % (filename, reader.line_num, e))
+
+        return (nih_approved_users,managed_tenants,members_list)
+
+
+def load_in_other_file(other_file=None):
+        try:
+            with open(other_file, 'r') as handle:
+                reader = csv.DictReader(handle, ['user_name','login', 'role', 'email', 'status', 'phsid' ])
+                # Loop through csv and load the user info
+                # we are loading the phsids as an array
+                for row in reader:
+                    try:
+                        if type(other_approved_users[row['login'].lower()]) is not list:
+                            other_approved_users[row['login'].lower()]=[]
+                    except KeyError:
+                        other_approved_users[row['login'].lower()]=[]
+                    #add in phsid to array
+                    other_approved_users[row['login'].lower()].append(row['phsid'])
+
+                    ##Create a list of who belongs to what managed tenant for later parsing
+                    ##if row['phsid'].split(".")[0] in settings['accounts']['managed_tenants']:
+                    ##    managed_tenants[row['phsid'].split(".")[0]].add(row['login'].upper())
+
+                #if debug:
+                #    print "DEBUG: load_in_nih_file maned_tenants middle:" 
+                #    pprint.pprint(managed_tenants)
+
+
+        except IOError as e:
+            sys.exit('file %s not found: %s' % (nih_file, e))
+        except csv.Error as e:
+            sys.exit('file %s, line %d: %s' % (filename, reader.line_num, e))
+
+        return other_approved_users
+
+
+
+if __name__ == "__main__":
+
+    #Load in the CLI flags
+    run = True
+    debug = False
+
+
+
+
 if __name__ == "__main__":
 
     #Load in the CLI flags
     run = True
     debug = False
     nih_file = False
+    other_file = False
     tukey = True
     approved_members = set()
     tenant_members = dict()
@@ -416,7 +518,7 @@ if __name__ == "__main__":
     multicloud = False
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "nocephquota", "ceph-keystone-s3", "ceph-native-s3", "nocinderquota","multicloud"])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "otherfile=", "nocephquota", "ceph-keystone-s3", "ceph-native-s3", "nocinderquota","multicloud"])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -428,6 +530,9 @@ if __name__ == "__main__":
         elif opt in ("--nihfile"):
             nih_file = arg
             nih_approved_users = {}
+        elif opt in ("--otherfile"):
+            other_file = arg
+            other_approved_users = {}
         elif opt in ("--notukey"):
             tukey = False
         elif opt in ("--nocinderquota"):
@@ -494,73 +599,50 @@ if __name__ == "__main__":
         print "DEBUG: members from SF"
         pprint.pprint( members_list )
 
-    #Load up a nih style csv of approved users.
-    #user_name is the actual human name
-    #login is the name we care about.
-    #phsid is also important eventually
     if nih_file:
-        
-        if debug:
-            print "DEBUG: maned_tenants:" 
-            pprint.pprint(settings['accounts']['managed_tenants'])
+        nih_approved_users,managed_tenants,members_list=load_in_nih_file(settings=settings,nih_approved_users=nih_approved_users,managed_tenants=managed_tenants,members_list=members_list)
+    if other_file:
+        other_approved_users=load_in_other_file(other_file=other_file)
 
-        try:
-            with open(nih_file, 'r') as handle:
-                reader = csv.DictReader(handle, ['user_name', 'login', 'authority', 'role', 'email', 'phone',' status', 'phsid', 'permission_set', 'created', 'updated', 'expires', 'downloader_for'])
-                # Loop through csv and load the user info
-                # we are loading the phsids as an array
-                for row in reader:
-                    try:
-                        if type(nih_approved_users[row['login'].upper()]) is not list:
-                            nih_approved_users[row['login'].upper()]=[]
-                    except KeyError:
-                        nih_approved_users[row['login'].upper()]=[]
-                    #add in phsid to array
-                    nih_approved_users[row['login'].upper()].append(row['phsid'])
-
-                    #Create a list of who belongs to what managed tenant for later parsing
-                    if row['phsid'].split(".")[0] in settings['accounts']['managed_tenants']:
-                        managed_tenants[row['phsid'].split(".")[0]].add(row['login'].upper())
-
-                for username, fields in members_list.items():
-                    #Nih style changes....i am doing this wrong
-                    if nih_file:
-                        if fields['eRA_Commons_username'].upper()  in nih_approved_users:
-                            new_username=fields['eRA_Commons_username'].upper()
-                            members_list[new_username] = members_list.pop( username )
-                            members_list[new_username]['username'] = new_username
-                            members_list[new_username]['login_identifier'] = "urn:mace:incommon:nih.gov!https://bionimbus-pdc.opensciencedatacloud.org/shibboleth!%s"%(new_username)
-                        else:
-                            continue
-
-
-                        
-        except IOError as e:
-            sys.exit('file %s not found: %s' % (nih_file, e))
-        except csv.Error as e:
-            sys.exit('file %s, line %d: %s' % (filename, reader.line_num, e))
-    
 
 
     #Loop through list of members and run the bash scripts that will create the account
     #FIXME: Most of this stuff could be moved into the python, just simpler not to
     print "Creating New Users:"
+    if debug:
+        print "DEBUG: nih_approved_users"
+        pprint.pprint( nih_approved_users ) 
+        print "DEBUG: other_approved_users"
+        pprint.pprint( other_approved_users ) 
+        print "DEBUG: memers_list.items()"
+        pprint.pprint( members_list.items() ) 
+        
+        
+
     for username, fields in members_list.items():
 
         #I fail at a good flow for creating new tenant+user combo vs existing tenant+new user
         user_created = None
-
-        if nih_file:
-            if fields['eRA_Commons_username'].upper()  in nih_approved_users:
-                pass
+        
+        if nih_file or other_file:
+            if nih_file and ( fields['eRA_Commons_username'].upper()  in nih_approved_users):
+                if debug:
+                    print "DEBUG: Username from SF(%s) in nih_file(%s) " % (username,fields['eRA_Commons_username'].upper()) 
+                    pass
+            elif other_file and ( fields['username'].lower() in other_approved_users):
+                if debug:
+                    print "DEBUG: Username from SF(%s) in other_file(%s) " % (username,fields['username'].lower()) 
+                    pass
             else:
+                if debug:
+                    print "DEBUG: Username from SF(%s) not in any files" % (username) 
                 continue
 
-        if debug:
-            print "DEBUG: Username from SF = %s" % (username) 
 
         #At some point we need to disable inactive users
         approved_members.add(username)
+        if debug:
+            print "DEBUG: Username (%s) added to approved_members." % (username) 
         
         try:
             user_exists = pwd.getpwnam(username)
@@ -568,6 +650,9 @@ if __name__ == "__main__":
             user_exists = None
 
         if not user_exists:
+            if debug:
+                print "DEBUG: Username %s does not exist" % (username) 
+
             if fields['tenant']:
                 if not tenant_exist(fields['tenant']):
                     if fields['quota_leader']:
@@ -593,11 +678,11 @@ if __name__ == "__main__":
                 if create_s3_creds:
                     create_ceph_s3_creds(tenant=fields['tenant'],ceph_auth_type=ceph_auth_type,username=username,debug=debug,run=run)
 
-    #Apply Quotas
+    ##Apply Quotas
     print "Setting Quotas"
     adjust_quotas(members_list=members_list,debug=debug,run=run)     
 
-    #adjust tenants and subtenant membership        
+    ##adjust tenants and subtenant membership        
     print "Adjusting tenant membership"
     adjust_tenants(members_list=members_list,users_cloud=users_cloud,debug=debug,run=run,create_s3_creds=create_s3_creds,ceph_auth_type=ceph_auth_type)     
 
