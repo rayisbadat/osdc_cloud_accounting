@@ -24,11 +24,12 @@ def create_ceph_s3_creds(tenant, username, ceph_auth_type=None,  debug=None, run
     elif ceph_auth_type == "ceph_keystone":
         cmd = [ '/usr/local/sbin/create_ceph_s3_creds.sh', tenant , username ]
     else:
+        if debug:
+            print "DEBUG: No known ceph_auth_type specified:" % ( ceph_auth_type ) 
         return False
 
-    #Set quota
     if debug:
-        print "INFO: %s cmd:" % (__name__) 
+        print "DEBUG: create_ceph_s3_creds %s cmd:" % (__name__) 
         pprint.pprint(cmd)
 
     if run:
