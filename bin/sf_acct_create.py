@@ -68,12 +68,22 @@ def create_tenant(tenant, debug=None, run=None):
     else:
         return True
 
-def create_user(username,cloud,fields, debug=None,run=None):
+def create_user(username,cloud,fields,is_nih_cloud=False,debug=None,run=None):
     """ Call create user script """
-    if fields['Authentication_Method'] == 'OpenID':
-        method = 'openid'
+    #This covers both NIHLogin users (since they use nih.gov creds
+    ## and eracommons users, since their urn:mace:incommon:nih.gov{...}!USERNAME
+    #the fact i am not geralizing it is sad.  
+    if is_nih_cloud and "nih.gov" not in  str(fields['login_identifier']).lower():
+        if fields['Authentication_Method'] == 'OpenID':
+            method = 'openid-pdc-none-nih-idp'
+        else:
+            method = 'shibboleth-pdc-none-nih-idp'
+    
     else:
-        method = 'shibboleth'
+        if fields['Authentication_Method'] == 'OpenID':
+            method = 'openid'
+        else:
+            method = 'shibboleth'
     
     #If we have an identifier use that, otherwise fallback to email
     #if fields['login_identifier'] == '' or fields['login_identifier'] == None ora not fields['login_identifier']:
@@ -365,7 +375,7 @@ def adjust_tenants(members_list=None,users_cloud=None,ceph_auth_type=None,debug=
             pprint.pprint( members_to_remove )
 
         #remove and add as needed
-        add_member_to_tenant(tenant=tenant, users=members_to_add, role="_member_", debug=debug, run=run, create_s3_creds=create_s3_creds)
+        add_member_to_tenant(tenant=tenant, users=members_to_add, role="_member_", debug=debug, run=run, ceph_auth_type=ceph_auth_type, create_s3_creds=create_s3_creds)
         remove_member_from_tenant(tenant=tenant, users=members_to_remove, role="_member_", debug=debug, run=run)
         
 
@@ -507,6 +517,7 @@ if __name__ == "__main__":
     #Load in the CLI flags
     run = True
     debug = False
+    is_nih_cloud=False
     nih_file = False
     other_file = False
     tukey = True
@@ -529,9 +540,11 @@ if __name__ == "__main__":
         elif opt in ("--norun"):
             run = False
         elif opt in ("--nihfile"):
+            is_nih_cloud=True
             nih_file = arg
             nih_approved_users = {}
         elif opt in ("--otherfile"):
+            is_nih_cloud=True
             other_file = arg
             other_approved_users = {}
         elif opt in ("--notukey"):
@@ -661,7 +674,7 @@ if __name__ == "__main__":
                         print "INFO: Creating new tenant %s" % (fields['tenant'])
                         if create_tenant(tenant=fields['tenant'], debug=debug,run=run):
                             print "INFO: Creating users %s" % username
-                            user_created = create_user(username=username,cloud=settings['general']['cloud'], fields=fields, debug=debug, run=run)
+                            user_created = create_user(username=username,cloud=settings['general']['cloud'], fields=fields, is_nih_cloud=is_nih_cloud, debug=debug, run=run)
                             add_member_to_tenant(role='quota_leader', tenant=fields['tenant'],users=[username], debug=debug, run=run)
                             if create_s3_creds:
                                 create_ceph_s3_creds(tenant=fields['tenant'],username=username,ceph_auth_type=ceph_auth_type,debug=debug,run=run)
@@ -675,7 +688,7 @@ if __name__ == "__main__":
             #Create the user in existing tenant
             if username and not user_created:
                 print "INFO: Creating users %s" % username
-                create_user(username=username,cloud=settings['general']['cloud'],fields=fields, debug=debug, run=run)
+                create_user(username=username,cloud=settings['general']['cloud'],fields=fields,is_nih_cloud=is_nih_cloud, debug=debug, run=run)
                 if create_s3_creds:
                     create_ceph_s3_creds(tenant=fields['tenant'],ceph_auth_type=ceph_auth_type,username=username,debug=debug,run=run)
 

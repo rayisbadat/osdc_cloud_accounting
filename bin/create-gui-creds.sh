@@ -21,16 +21,20 @@ then
     exit 1
 fi
 
-if [ "$ACCTCREATION_SSHKEY" == "" ] 
+#if [ "$FORCE_ACCTCREATION_SSHKEY" ] 
+if [ "$METHOD" == "shibboleth-pdc-none-nih-idp" ]
+then
+    METHOD="shibboleth"
+    CLOUD="pdc"
+	ssh -i $FORCE_ACCTCREATION_SSHKEY ubuntu@www.opensciencedatacloud.org "/var/www/tukey/tukey_middleware/tools/with_venv.sh python /var/www/tukey/tukey_middleware/tools/create_tukey_user.py  $CLOUD $METHOD $EPPN $USERNAME $PASSWORD"
+elif [ "$METHOD" == "openid-pdc-none-nih-idp" ]
+then
+    METHOD="openid"
+    CLOUD="pdc"
+	ssh -i $FORCE_ACCTCREATION_SSHKEY ubuntu@www.opensciencedatacloud.org "/var/www/tukey/tukey_middleware/tools/with_venv.sh python /var/www/tukey/tukey_middleware/tools/create_tukey_user.py  $CLOUD $METHOD $EPPN $USERNAME $PASSWORD"
+elif [ "$ACCTCREATION_SSHKEY" == "" ] 
 then
 	/var/www/tukey/tukey_middleware/tools/with_venv.sh python /var/www/tukey/tukey_middleware/tools/create_tukey_user.py  $CLOUD $METHOD $EPPN $USERNAME $PASSWORD # &>/dev/null
 else 
 	ssh -i $ACCTCREATION_SSHKEY ubuntu@www.opensciencedatacloud.org "/var/www/tukey/tukey_middleware/tools/with_venv.sh python /var/www/tukey/tukey_middleware/tools/create_tukey_user.py  $CLOUD $METHOD $EPPN $USERNAME $PASSWORD"
 fi
-
-##KLUDGE TO MAKE PDC+Atwoodv2 work-- Ray 20160523 
-#if [ "$FORCE_ACCTCREATION_SSHKEY" ] 
-#then
-#	ssh -i $FORCE_ACCTCREATION_SSHKEY ubuntu@www.opensciencedatacloud.org "/var/www/tukey/tukey_middleware/tools/with_venv.sh python /var/www/tukey/tukey_middleware/tools/create_tukey_user.py  $CLOUD $METHOD $EPPN $USERNAME $PASSWORD"
-#fi
-
