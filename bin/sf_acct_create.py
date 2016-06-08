@@ -456,6 +456,10 @@ def load_in_nih_file(settings=None,nih_approved_users=None,managed_tenants=None,
                             members_list[new_username] = members_list.pop( username )
                             members_list[new_username]['username'] = new_username
                             members_list[new_username]['login_identifier'] = "urn:mace:incommon:nih.gov!https://bionimbus-pdc.opensciencedatacloud.org/shibboleth!%s"%(new_username)
+                            try:
+                                del members_list[username]
+                            except KeyError:
+                                pass
                         else:
                             continue
                 if debug:
