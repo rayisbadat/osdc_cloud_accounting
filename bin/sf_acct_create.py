@@ -262,6 +262,9 @@ def db_connect(db):
 def remove_member_from_tenant(tenant=None, users=None, role="_member_", debug=None, run=None):
     """  Remove users from the tenant """
     for user in users:
+        if user == 'admin':
+            continue
+
         print "INFO: Removing user %s from tenant %s" % (user, tenant)
         cmd = [
             'keystone',
@@ -341,7 +344,7 @@ def adjust_managed_tenants(managed_tenants=None,users_cloud=None,ceph_auth_type=
         remove_member_from_tenant(tenant=tenant_name, users=invalid_tenant_members, debug=debug, run=run)
         add_member_to_tenant(tenant=tenant_name, users=additional_tenant_members,ceph_auth_type=ceph_auth_type, debug=debug, run=run)
 
-def adjust_tenants(members_list=None,users_cloud=None,ceph_auth_type=None,debug=None,run=None,create_s3_creds=False):
+def adjust_tenants(members_list=None,list_of_approved_user_names=None,users_cloud=None,ceph_auth_type=None,debug=None,run=None,create_s3_creds=False):
     #Build tenant lists
     for username, fields in members_list.items():
         if fields['tenant'] not in tenant_members:
@@ -359,7 +362,7 @@ def adjust_tenants(members_list=None,users_cloud=None,ceph_auth_type=None,debug=
         pprint.pprint(tenant_members)  
 
     for tenant in tenant_members.keys():
-        members=tenant_members[tenant]
+        members=set( tenant_members[tenant] ) & set(list_of_approved_user_names)
 
         #Build lists of who is currently, needs to be added, needs to be removed
         current_members=get_tenant_members(tenant,users_cloud=users_cloud,debug=debug)
@@ -617,10 +620,20 @@ if __name__ == "__main__":
         print "DEBUG: members from SF"
         pprint.pprint( members_list )
 
+    #Kludge to deal wiht add/removing from tenants and quotas
+    list_of_approved_user_names = []
+
     if nih_file:
         nih_approved_users,managed_tenants,members_list=load_in_nih_file(settings=settings,nih_approved_users=nih_approved_users,managed_tenants=managed_tenants,members_list=members_list)
+        list_of_approved_user_names += nih_approved_users.keys()
     if other_file:
         other_approved_users=load_in_other_file(other_file=other_file)
+        list_of_approved_user_names += other_approved_users.keys()
+
+    if debug:
+        print "DEBUG: list_of_approved_user_names"
+        pprint.pprint( list_of_approved_user_names )
+
 
 
 
@@ -702,7 +715,11 @@ if __name__ == "__main__":
 
     ##adjust tenants and subtenant membership        
     print "Adjusting tenant membership"
-    adjust_tenants(members_list=members_list,users_cloud=users_cloud,debug=debug,run=run,create_s3_creds=create_s3_creds,ceph_auth_type=ceph_auth_type)     
+    adjust_tenants(members_list=members_list,
+        list_of_approved_user_names=list_of_approved_user_names,
+        users_cloud=users_cloud,
+        create_s3_creds=create_s3_creds,ceph_auth_type=ceph_auth_type,
+        debug=debug,run=run)
 
     #Lock users
     print "Locking/Unlocking Users:"
