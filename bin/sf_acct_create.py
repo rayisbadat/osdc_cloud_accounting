@@ -281,7 +281,7 @@ def remove_member_from_tenant(tenant=None, users=None, role="_member_", debug=No
             try:
                 result = subprocess.check_call( cmd , stderr=open(os.devnull, 'wb'))
             except subprocess.CalledProcessError, e:
-                sys.stderr.write("Error: Removing  user %s to tenant %s\n" % (username,tenant) )
+                sys.stderr.write("Error: Removing  user %s from tenant %s\n" % (user,tenant) )
                 sys.stderr.write("%s\n" % e.output)
         
 
@@ -362,7 +362,16 @@ def adjust_tenants(members_list=None,list_of_approved_user_names=None,users_clou
         pprint.pprint(tenant_members)  
 
     for tenant in tenant_members.keys():
-        members=set( tenant_members[tenant] ) & set(list_of_approved_user_names)
+        if debug:
+            print "DEBUG: adjusting_tenants tenant_members for tenant %s" %(tenant)
+            pprint.pprint(tenant_members[tenant])  
+            print "DEBUG: adjusting_tenants list_of_approved_user_names"
+            pprint.pprint(list_of_approved_user_names)  
+
+        if list_of_approved_user_names is not None:
+            members=set( tenant_members[tenant] ) & set(list_of_approved_user_names)
+        else:
+            members=set( tenant_members[tenant] )
 
         #Build lists of who is currently, needs to be added, needs to be removed
         current_members=get_tenant_members(tenant,users_cloud=users_cloud,debug=debug)
@@ -621,12 +630,14 @@ if __name__ == "__main__":
         pprint.pprint( members_list )
 
     #Kludge to deal wiht add/removing from tenants and quotas
-    list_of_approved_user_names = []
+    list_of_approved_user_names = None
 
     if nih_file:
+        list_of_approved_user_names = []
         nih_approved_users,managed_tenants,members_list=load_in_nih_file(settings=settings,nih_approved_users=nih_approved_users,managed_tenants=managed_tenants,members_list=members_list)
         list_of_approved_user_names += nih_approved_users.keys()
     if other_file:
+        list_of_approved_user_names = []
         other_approved_users=load_in_other_file(other_file=other_file)
         list_of_approved_user_names += other_approved_users.keys()
 
@@ -641,10 +652,16 @@ if __name__ == "__main__":
     #FIXME: Most of this stuff could be moved into the python, just simpler not to
     print "Creating New Users:"
     if debug:
-        print "DEBUG: nih_approved_users"
-        pprint.pprint( nih_approved_users ) 
-        print "DEBUG: other_approved_users"
-        pprint.pprint( other_approved_users ) 
+        try:
+            print "DEBUG: nih_approved_users"
+            pprint.pprint( nih_approved_users ) 
+        except:
+            pass
+        try:
+            print "DEBUG: other_approved_users"
+            pprint.pprint( other_approved_users ) 
+        except:
+            pass
         print "DEBUG: memers_list.items()"
         pprint.pprint( members_list.items() ) 
         
