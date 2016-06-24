@@ -630,14 +630,15 @@ if __name__ == "__main__":
         pprint.pprint( members_list )
 
     #Kludge to deal wiht add/removing from tenants and quotas
-    list_of_approved_user_names = None
+    if nih_file or other_file:
+        list_of_approved_user_names = []
+    else:
+        list_of_approved_user_names = None
 
     if nih_file:
-        list_of_approved_user_names = []
         nih_approved_users,managed_tenants,members_list=load_in_nih_file(settings=settings,nih_approved_users=nih_approved_users,managed_tenants=managed_tenants,members_list=members_list)
         list_of_approved_user_names += nih_approved_users.keys()
     if other_file:
-        list_of_approved_user_names = []
         other_approved_users=load_in_other_file(other_file=other_file)
         list_of_approved_user_names += other_approved_users.keys()
 
