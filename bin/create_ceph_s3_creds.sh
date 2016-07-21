@@ -61,7 +61,9 @@ create_s3_creds() {
 }
 
 write_out_creds() {
-    sudo su - $username  -c "echo -e [[${tenant}]]\\\naccess_key=${access_key}\\\nsecret_key=${secret_key}\\\n >> ${CREDS_FILE}" 
+    #sudo su - $username  -c "echo -e [[${tenant}]]\\\naccess_key=${access_key}\\\nsecret_key=${secret_key}\\\n >> ${CREDS_FILE}" 
+    echo -e [[${tenant}]]\\\naccess_key=${access_key}\\\nsecret_key=${secret_key}\\\n >> $( eval echo ~${username})/${CREDS_FILE}
+    chown $username $( eval echo ~${username})/${CREDS_FILE}
 }
 
 push_to_db() {
