@@ -146,12 +146,12 @@ class RepCephOSdu:
 
         os_creds={}
         strip='\'"'
-        os_creds['user'] = username.translate(None,strip)
-        os_creds['key'] = password.translate(None,strip)
-        os_creds['tenant_name'] = tenant_name.translate(None,strip)
-        os_creds['authurl'] = auth_url.translate(None,strip)
+        #os_creds['user'] = username.translate(None,strip)
+        #os_creds['key'] = password.translate(None,strip)
+        #os_creds['tenant_name'] = tenant_name.translate(None,strip)
+        #os_creds['authurl'] = auth_url.translate(None,strip)
 
-        cmd = [ '/usr/local/sbin/get_tenant_cephs3_stats.sh','%s'%(os_creds['tenant_name']) ]
+        cmd = [ '/usr/local/sbin/get_tenant_cephs3_stats.sh','%s'%(tenant_name.translate(None,strip)) ]
     
         #Set quota
         if debug:
@@ -303,6 +303,24 @@ class RepCephOSdu:
             #if datamanager users
             return True
         return False
+
+
+    def get_project_overrides(self, filename=None, debug=None):
+        project_overrides = {}
+        re_overrides = re.compile('(\S+)=(\S+)')
+
+        f = open(filename,'r')
+        overrides_file = f.read()
+        if debug or self.debug:
+            sys.stderr.write( "DEBUG: Read in %s:\n%s" %(filename,overrides_file) )
+        f.close()
+        
+        for key,value in re_overrides.findall( overrides_file ):
+            project_overrides[key] = value
+
+        return project_overrides
+
+    
     
 
 if __name__ == "__main__":
@@ -312,9 +330,10 @@ if __name__ == "__main__":
     debug = False  # Debug statements
     novarc = None  # novarc file for the tenant
     s3apitype = "rados" #assume swft cmd or rados
+    project_override_file = None
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "update", "rados", "swift","novarc=" ])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "update", "rados", "swift","novarc=","project_override_file=" ])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -329,9 +348,12 @@ if __name__ == "__main__":
             s3apitype = "rados"
         elif opt in ("--swift"):
             s3apitype = "swift"
+        elif opt in ("--project_override_file"):
+            project_override_file = arg
+            project_overrides={}
 
     if len(sys.argv) <= 1:
-        sys.stderr.write( "Usage: %s --novarc=/PATH/to/.novarc [--debug] [--update]\n"%(__file__) )
+        sys.stderr.write( "Usage: %s --novarc=/PATH/to/.novarc [--project_override_file /path/to/override][--debug] [--update]\n"%(__file__) )
         sys.exit(0)
 
     
@@ -350,7 +372,24 @@ if __name__ == "__main__":
                     swift_du = user_repcephosddu.get_swift_du_for_tenant( debug=debug, **novarc_creds)
                 elif s3apitype == "rados":
                     swift_du = user_repcephosddu.get_rados_du_for_tenant( debug=debug, **novarc_creds)
+
+                if debug:
+                    print "Swift du stage 1 = %s" % (swift_du) 
+
+                    # If their is an override file, loop through summing up. Otherwise run once and exit
+                    if project_override_file:
+                        project_overrides=user_repcephosddu.get_project_overrides(filename=project_override_file, debug=debug)
+                        if debug:
+                            print "Project Overrrides"
+                            pprint.pprint( project_overrides ) 
                     
+                        if tenant_name in project_overrides.keys():
+                            if debug:
+                                print "Additonal project: %s" %(tenant_name)
+                            for project in project_overrides[tenant_name].split(','):
+                                swift_du += user_repcephosddu.get_rados_du_for_tenant( debug=debug, tenant_name=project)
+                                if debug:
+                                    print "Swift du stage N = %s" % (swift_du) 
             except Exception as e:
                sys.stderr.write("WARN: %s\n" % e) 
                sys.exit(1)
@@ -365,7 +404,6 @@ if __name__ == "__main__":
             if update:
 
                 if user_repcephosddu.is_quota_leader(tenant_name=tenant_name, username=username):
-                    print "RAY>>> Update Quota Leader: %s:%s=%s" % (username,tenant_name, swift_du)
                     user_repcephosddu.update_db(username=username, tenant_name=tenant_name,  du=swift_du, debug=debug )
                     if debug:
                         print "Update Quota Leader: %s:%s=%s" % (username,tenant_name, swift_du)
