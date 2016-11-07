@@ -97,7 +97,7 @@ def create_user(username,cloud,fields,is_nih_cloud=False,debug=None,run=None):
     cmd = [
         '/usr/local/sbin/create-user.sh',
         fields['Name'],
-        fields['username'],
+        username,
         fields['tenant'],
         login_identifier,
         method,
@@ -365,8 +365,8 @@ def adjust_tenants(members_list=None,list_of_approved_user_names=None,users_clou
         if debug:
             print "DEBUG: adjusting_tenants tenant_members for tenant %s" %(tenant)
             pprint.pprint(tenant_members[tenant])  
-            print "DEBUG: adjusting_tenants list_of_approved_user_names"
-            pprint.pprint(list_of_approved_user_names)  
+            #print "DEBUG: adjusting_tenants list_of_approved_user_names"
+            #pprint.pprint(list_of_approved_user_names)  
 
         if list_of_approved_user_names is not None:
             members=set( tenant_members[tenant] ) & set(list_of_approved_user_names)
@@ -486,10 +486,10 @@ def load_in_nih_file(settings=None,nih_approved_users=None,managed_tenants=None,
         return (nih_approved_users,managed_tenants,members_list)
 
 
-def load_in_other_file(other_file=None):
+def load_in_other_file(other_file=None,debug=None):
         try:
             with open(other_file, 'r') as handle:
-                reader = csv.DictReader(handle, ['user_name','login', 'role', 'email', 'status', 'phsid' ])
+                reader = csv.DictReader(handle, ['user_name','login','email', 'status', 'phsid' ])
                 # Loop through csv and load the user info
                 # we are loading the phsids as an array
                 for row in reader:
@@ -505,9 +505,9 @@ def load_in_other_file(other_file=None):
                     ##if row['phsid'].split(".")[0] in settings['accounts']['managed_tenants']:
                     ##    managed_tenants[row['phsid'].split(".")[0]].add(row['login'].upper())
 
-                #if debug:
-                #    print "DEBUG: load_in_nih_file maned_tenants middle:" 
-                #    pprint.pprint(managed_tenants)
+                if debug:
+                    print "DEBUG: load_in_other_file : other_approved_users" 
+                    pprint.pprint(other_approved_users)
 
 
         except IOError as e:
@@ -639,7 +639,7 @@ if __name__ == "__main__":
         nih_approved_users,managed_tenants,members_list=load_in_nih_file(settings=settings,nih_approved_users=nih_approved_users,managed_tenants=managed_tenants,members_list=members_list)
         list_of_approved_user_names += nih_approved_users.keys()
     if other_file:
-        other_approved_users=load_in_other_file(other_file=other_file)
+        other_approved_users=load_in_other_file(other_file=other_file,debug=debug)
         list_of_approved_user_names += other_approved_users.keys()
 
     if debug:
@@ -676,11 +676,23 @@ if __name__ == "__main__":
         if nih_file or other_file:
             if nih_file and ( fields['eRA_Commons_username'].upper()  in nih_approved_users):
                 if debug:
-                    print "DEBUG: Username from SF(%s) in nih_file(%s) " % (username,fields['eRA_Commons_username'].upper()) 
+                    print "DEBUG: eRA_Commons_username from SF(%s) in nih_file(%s) " % (username,fields['eRA_Commons_username'].upper()) 
                     pass
             elif other_file and ( fields['username'].lower() in other_approved_users):
                 if debug:
                     print "DEBUG: Username from SF(%s) in other_file(%s) " % (username,fields['username'].lower()) 
+                    pass
+            elif other_file and ( fields['eRA_Commons_username'].lower() in other_approved_users):
+                #I have no clue if this will create duplication issues 
+                #newusername.lower() is cause im stupid, and read in lower in oen spot, but apply normal other 
+                newusername=fields['eRA_Commons_username']
+                members_list[newusername] = members_list.pop( username  )
+                list_of_approved_user_names.remove( newusername.lower() )
+                list_of_approved_user_names.append( newusername )
+                members_list[newusername]['username']=newusername
+                username=newusername
+                if debug:
+                    print "DEBUG: eRA_Commons_username from SF(%s) in other_file(%s) " % (username,fields['eRA_Commons_username'])
                     pass
             else:
                 if debug:
