@@ -47,4 +47,4 @@ instances=${cores_int}
 
 nova quota-update  --force --cores $cores_int $tennant_id # &>/dev/null
 nova quota-update  --force --instances $instances $tennant_id # &>/dev/null
-nova quota-update  --force --fixed-ips $instances $tennant_id # &>/dev/null
+nova quota-update  --force --fixed-ips $instances $tennant_id  &>/dev/null 
