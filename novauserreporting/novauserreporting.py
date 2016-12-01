@@ -15,8 +15,11 @@ from keystoneclient.exceptions import AuthorizationFailure, Unauthorized
 
 #Nova calls
 ### I am worried about the level of control this has
-from novaclient.v1_1 import client as nc_client
-from novaclient.v1_1 import flavors, images
+#from novaclient.v1_1 import client as nc_client
+#from novaclient.v1_1 import flavors, images
+from novaclient.v2 import client as nc_client
+from novaclient.v2 import flavors, images
+
 
 #All this just to convert dates
 from datetime import datetime, timedelta, date
