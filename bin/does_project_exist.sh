@@ -1,5 +1,5 @@
 #!/bin/bash
-TENANT=${1}
+PROJECT=${1}
 CORES=${2}
 
 if [ -e /etc/osdc_cloud_accounting/admin_auth ]
@@ -19,13 +19,13 @@ else
 fi
 
 
-if [ -z "$TENANT" ]
+if [ -z "$PROJECT" ]
 then
-    echo "Usage: $0 TENANT"
+    echo "Usage: $0 PROJECT"
     exit 1
 fi
 
-/usr/bin/keystone tenant-get $TENANT &> /dev/null
+openstack project show $PROJECT &>/dev/null 
 if [ ! "$?"  == "0" ]
 then
     echo "no"

@@ -1,5 +1,5 @@
 #!/bin/bash
-TENANT_NAME=${1}
+PROJECT=${1}
 CORES=${2}
 
 if [ -e /etc/osdc_cloud_accounting/admin_auth ]
@@ -19,32 +19,21 @@ else
 fi
 
 
-if [ -z "$TENANT_NAME" ]
+if [ -z "$PROJECT" ]
 then
-    echo "Usage: $0 TENANT_NAME [cores]"
+    echo "Usage: $0 PROJECT [cores]"
 	exit 1
-fi
-tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep " $TENANT_NAME " | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
-
-
-if [ "$tennant_id" == "" ]
-then
-    echo "$0 Error: No user/tennant found for $TENANT_NAME"
-    exit 1
 fi
 
 if [ -z "$CORES" ]
 then
-    nova quota-show --tenant=${tennant_id}
+    openstack quota show $PROJECT
     exit 0
 fi
 
 #Cores
 cores_int=$(awk  "BEGIN { rounded = sprintf(\"%.0f\", $CORES); print rounded }")
-
 instances=${cores_int}
 
-
-nova quota-update  --force --cores $cores_int $tennant_id # &>/dev/null
-nova quota-update  --force --instances $instances $tennant_id # &>/dev/null
-nova quota-update  --force --fixed-ips $instances $tennant_id  &>/dev/null 
+openstack quota set --cores $cores_int --instances $instances --fixed-ips $instances $PROJECT &>/dev/null
+neutron quota-update --port $instances --tenant_id $( openstack project show  $PROJECT -fshell | grep '^id="' | cut -f2 -d'"' ) &>/dev/null

@@ -1,5 +1,5 @@
 #!/bin/bash
-USERNAME=${1}
+PROJECT=${1}
 IPS=${2}
 
 if [ -e /etc/osdc_cloud_accounting/admin_auth ]
@@ -18,29 +18,17 @@ else
     exit 1
 fi
 
-
-if [ -z "$USERNAME" ]
+if [ -z "$PROJECT" ]
 then
-    echo "Usage: $0 USERNAME [ips]"
-    exit 1
-fi
-
-tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep " $USERNAME " | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
-
-
-if [ "$tennant_id" == "" ]
-then
-    echo "$0 Error: No user/tennant found for $USERNAME"
+    echo "Usage: $0 PROJECT [ips]"
     exit 1
 fi
 
 if [ -z "$IPS" ]
 then
-    #nova-manage account quota --project=${tennant_id}
-    nova quota-show --tenant  ${tennant_id}
-    
+    openstack quota show $PROJECT
     exit 0
 fi
 
 ips_int=$(awk  "BEGIN { rounded = sprintf(\"%.0f\", $IPS); print rounded }")
-nova quota-update  --floating_ips $ips_int  ${tennant_id} #&>/dev/null
+openstack quota set --floating-ips $ips_int $PROJECT &>/dev/null
