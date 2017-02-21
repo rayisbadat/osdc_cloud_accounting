@@ -72,20 +72,25 @@ def create_project(tenant, debug=None, run=None, domain='default'):
 
 def create_user(username,cloud,fields,is_nih_cloud=False,debug=None,run=None):
     """ Call create user script """
-    #This covers both NIHLogin users (since they use nih.gov creds
-    ## and eracommons users, since their urn:mace:incommon:nih.gov{...}!USERNAME
-    #the fact i am not geralizing it is sad.  
-    if is_nih_cloud and "nih.gov" not in  str(fields['login_identifier']).lower():
-        if fields['Authentication_Method'] == 'OpenID':
-            method = 'openid-pdc-none-nih-idp'
-        else:
-            method = 'shibboleth-pdc-none-nih-idp'
-    
+    ##This covers both NIHLogin users (since they use nih.gov creds
+    ### and eracommons users, since their urn:mace:incommon:nih.gov{...}!USERNAME
+    ##the fact i am not geralizing it is sad.  
+    ##if is_nih_cloud and "nih.gov" not in  str(fields['login_identifier']).lower():
+    #    if fields['Authentication_Method'] == 'OpenID':
+    #        method = 'openid-pdc-none-nih-idp'
+    #    else:
+    #        method = 'shibboleth-pdc-none-nih-idp'
+    #
+    #else:
+    #    if fields['Authentication_Method'] == 'OpenID':
+    #        method = 'openid'
+    #    else:
+    #        method = 'shibboleth'
+    if fields['Authentication_Method'] == 'OpenID':
+        method = 'openid'
     else:
-        if fields['Authentication_Method'] == 'OpenID':
-            method = 'openid'
-        else:
-            method = 'shibboleth'
+        method = 'shibboleth'
+    
     
     #If we have an identifier use that, otherwise fallback to email
     #if fields['login_identifier'] == '' or fields['login_identifier'] == None ora not fields['login_identifier']:
