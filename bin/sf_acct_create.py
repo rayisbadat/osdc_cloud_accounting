@@ -49,20 +49,22 @@ def create_ceph_s3_creds(tenant, username, ceph_auth_type=None,  debug=None, run
 def tenant_exist(tenant):
     """ Check if tenant exists """
     try:
-        subprocess.check_call( ['/usr/local/sbin/does_tenant_exist.sh', tenant ], stdout=open(os.devnull, 'wb') )
+        subprocess.check_call( ['/usr/local/sbin/does_project_exist.sh', tenant ], stdout=open(os.devnull, 'wb') )
         return True
     except subprocess.CalledProcessError, e:
         return False
 
 
-def create_tenant(tenant, debug=None, run=None):
+def create_project(tenant, debug=None, run=None, domain='default'):
     """ call the bash scripts to create tenants """
     if run:
         try:
-            subprocess.check_call( ['/usr/bin/keystone','tenant-create', '--name=%s'%(tenant)], stdout=open(os.devnull, 'wb'),stderr=open(os.devnull, 'wb') )
+            cmd = ['openstack','project', 'create', '--domain=%s'%(domain), '%s'%(tenant)]
+            subprocess.check_call( cmd , stdout=open(os.devnull, 'wb'),stderr=open(os.devnull, 'wb') )
             return True
         except subprocess.CalledProcessError, e:
             sys.stderr.write("Error creating  new tenant:  %s\n" % username )
+            sys.stderr.write("CMD:  %s\n" % cmd )
             sys.stderr.write("%s\n" % e.output)
             return False
     else:
@@ -206,18 +208,28 @@ def toggle_user_locks(approved_members=None, starting_uid=1500, debug=None):
             sys.stderr.write("%s\n" % e.output)
 
 
-def get_tenant_members(tenant=None,users_cloud=None,debug=None):
+def get_project_members(project=None,users_cloud=None,debug=None):
     """ Return list of users in a tenant, the client API wants the user we run as to be a member of every tenant we query :( """
+
+    #query = """select a.name as User_Name
+    #    from keystone.project a
+    #        join keystone.assignment b
+    #            on b.target_id = a.id
+    #        join keystone.local_user c
+    #            on b.actor_id = c.id
+    #    where 
+    #        a.name='%s'
+    #    """ % (project)    
 
     query = """select c.name as User_Name
         from keystone.project a
             join keystone.assignment b
                 on b.target_id = a.id
-            join keystone.user c
-                on b.actor_id = c.id
-        where 
-            a.name='%s'
-        """ % (tenant)    
+            join keystone.local_user c
+                on b.actor_id = c.user_id
+        where
+            a.name='%s';  
+        """ % (project)
 
     #if users_cloud:
     #    query += """ and c.extra like '{"email": "CLOUD:%s,%%'""" % (users_cloud)
@@ -266,12 +278,12 @@ def remove_member_from_tenant(tenant=None, users=None, role="_member_", debug=No
             continue
 
         print "INFO: Removing user %s from tenant %s" % (user, tenant)
-        cmd = [
-            'keystone',
-            'user-role-remove',
-            "--user=%s"%(user),
-            "--tenant=%s"%(tenant),
-            "--role=%s"%(role),
+        cmd = [ 'openstack', 
+                'role',
+                'remove', 
+                '--project=%s'%(tenant),
+                '--user=%s'%(user),
+                '%s'%(role) 
         ]
         if debug:
             print "DEBUG: Removing %s from tenant %s and role %s" %(user,tenant,role)
@@ -279,36 +291,40 @@ def remove_member_from_tenant(tenant=None, users=None, role="_member_", debug=No
 
         if run:
             try:
-                result = subprocess.check_call( cmd , stderr=open(os.devnull, 'wb'))
+                #result = subprocess.check_call( cmd , stderr=open(os.devnull, 'wb'))
+                result = subprocess.check_call( cmd )
             except subprocess.CalledProcessError, e:
                 sys.stderr.write("Error: Removing  user %s from tenant %s\n" % (user,tenant) )
                 sys.stderr.write("%s\n" % e.output)
         
 
-def add_member_to_tenant(tenant=None, users=None, role="_member_", ceph_auth_type=None, debug=None, run=None,create_s3_creds=False):
-    """ Add users to the tenant """  
+def add_member_to_project(project=None, users=None, role="_member_", ceph_auth_type=None, debug=None, run=None,create_s3_creds=False, domain='default'):
+    """ Add users to the project """  
     for user in users:
-        print "INFO: Adding user %s to tenant %s" % (user, tenant)
-        cmd = [
-            'keystone',
-            'user-role-add',
-            "--user=%s"%(user),
-            "--tenant=%s"%(tenant),
-            "--role=%s"%(role),
+        print "INFO: Adding user %s to project %s" % (user, project)
+
+        cmd = [ 'openstack',
+                'role',
+                'add', 
+                '--project=%s'%(project),
+                '--user=%s'%(user),
+                '%s'%(role) 
         ]
+
         if debug:
-            print "DEBUG: Adding %s to tenant %s and role %s" %(user,tenant,role)
+            print "DEBUG: Adding %s to project %s and role %s" %(user,project,role)
             pprint.pprint( cmd )
 
         if run:
             try:
-                result = subprocess.check_call( cmd, stderr=open(os.devnull, 'wb')  )
+                #result = subprocess.check_call( cmd, stderr=open(os.devnull, 'wb')  )
+                result = subprocess.check_call( cmd )
             except subprocess.CalledProcessError, e:
-                sys.stderr.write("Error: Adding  user %s to tenant %s\n" % (user,tenant) )
-                sys.stderr.write("%s\n" % e.output)
+                sys.stderr.write("Error: Adding  user %s to project %s\n" % (user,project) )
+                sys.stderr.write(">%s\n" % e.output)
 
             if create_s3_creds:
-                create_ceph_s3_creds(tenant=tenant,username=user,ceph_auth_type=ceph_auth_type,debug=debug,run=run)
+                create_ceph_s3_creds(tenant=project,username=user,ceph_auth_type=ceph_auth_type,debug=debug,run=run)
             
 
 def adjust_managed_tenants(managed_tenants=None,users_cloud=None,ceph_auth_type=None,debug=None,run=None):
@@ -326,7 +342,7 @@ def adjust_managed_tenants(managed_tenants=None,users_cloud=None,ceph_auth_type=
         #Intersection of CSV and SalesForce
         approved_tenant_members = csv_tenant_members.intersection( approved_members )
         #Current users in tenant
-        current_tenant_members = get_tenant_members(tenant=tenant_name,users_cloud=users_cloud,debug=debug)
+        current_tenant_members = get_project_members(project=tenant_name,users_cloud=users_cloud,debug=debug)
         #Keep these user in tenant, they are still valid
         valid_tenant_members = current_tenant_members.intersection(approved_tenant_members)
         #We need to remove these users from the tenant
@@ -342,7 +358,7 @@ def adjust_managed_tenants(managed_tenants=None,users_cloud=None,ceph_auth_type=
             pprint.pprint( additional_tenant_members ) 
        
         remove_member_from_tenant(tenant=tenant_name, users=invalid_tenant_members, debug=debug, run=run)
-        add_member_to_tenant(tenant=tenant_name, users=additional_tenant_members,ceph_auth_type=ceph_auth_type, debug=debug, run=run)
+        add_member_to_project(project=tenant_name, users=additional_tenant_members,ceph_auth_type=ceph_auth_type, debug=debug, run=run)
 
 def adjust_tenants(members_list=None,list_of_approved_user_names=None,users_cloud=None,ceph_auth_type=None,debug=None,run=None,create_s3_creds=False):
     #Build tenant lists
@@ -357,9 +373,9 @@ def adjust_tenants(members_list=None,list_of_approved_user_names=None,users_clou
                     tenant_members[subtenant]=[]
                 tenant_members[subtenant].append(username)
 
-    if debug:
-        print "DEBUG: adjusting_tenants tenant_members"
-        pprint.pprint(tenant_members)  
+    #if debug:
+    #    print "DEBUG: adjusting_tenants tenant_members"
+    #    pprint.pprint(tenant_members)  
 
     for tenant in tenant_members.keys():
         if debug:
@@ -373,21 +389,30 @@ def adjust_tenants(members_list=None,list_of_approved_user_names=None,users_clou
         else:
             members=set( tenant_members[tenant] )
 
+        if debug:
+            print "DEBUG: adjusting_tenants: members"
+            pprint.pprint(members)  
+
         #Build lists of who is currently, needs to be added, needs to be removed
-        current_members=get_tenant_members(tenant,users_cloud=users_cloud,debug=debug)
+        current_members=get_project_members(tenant,users_cloud=users_cloud,debug=debug)
         members_to_add=set(members)-set(current_members)
         members_to_remove=set(current_members)-set(members)
 
         if debug:
             print "DEBUG: adjusting_tenants current tenant list"
+            print "DEBUG: adjusting_tenants current tenant list - tenant"
             pprint.pprint( tenant ) 
+            print "DEBUG: adjusting_tenants current tenant list - members"
             pprint.pprint( members )
+            print "DEBUG: adjusting_tenants current tenant list - current_members"
             pprint.pprint( current_members )
+            print "DEBUG: adjusting_tenants current tenant list - members_to_add"
             pprint.pprint( members_to_add )
+            print "DEBUG: adjusting_tenants current tenant list - members_to_remove"
             pprint.pprint( members_to_remove )
 
         #remove and add as needed
-        add_member_to_tenant(tenant=tenant, users=members_to_add, role="_member_", debug=debug, run=run, ceph_auth_type=ceph_auth_type, create_s3_creds=create_s3_creds)
+        add_member_to_project(project=tenant, users=members_to_add, role="_member_", debug=debug, run=run, ceph_auth_type=ceph_auth_type, create_s3_creds=create_s3_creds)
         remove_member_from_tenant(tenant=tenant, users=members_to_remove, role="_member_", debug=debug, run=run)
         
 
@@ -399,13 +424,10 @@ def adjust_quotas(members_list=None,debug=None,run=None):
         if debug:
             print "DEBUG: Username from SF = %s" % (username) 
 
-        try:
-            user_exists = pwd.getpwnam(username)
-        except:
-            user_exists = None
+        user_exists = get_user_exists(username=username)
+
         if debug:
             print "DEBUG: Username %s exists? %s " % (username,user_exists) 
-
 
         #Set storage quota if leader
         if user_exists and fields['quota_leader']:
@@ -518,14 +540,26 @@ def load_in_other_file(other_file=None):
         return other_approved_users
 
 
+def get_user_exists(username=None, user_checker="openstack", debug=None):
+    """Checks if user exists and returns True or None"""    
 
-if __name__ == "__main__":
+    user_exists = None
 
-    #Load in the CLI flags
-    run = True
-    debug = False
+    if user_checker == "openstack":
+        try:
+            subprocess.check_call( ['openstack','user', 'show', '%s'%(username)], stdout=open(os.devnull, 'wb'),stderr=open(os.devnull, 'wb') )
+        except subprocess.CalledProcessError, e:
+            user_exists = None
+        else:
+            user_exists = True
 
+    elif user_checker == "pwd":
+        try:
+            user_exists = pwd.getpwnam(username)
+        except:
+            user_exists = None
 
+    return user_exists
 
 
 if __name__ == "__main__":
@@ -544,9 +578,10 @@ if __name__ == "__main__":
     set_cinder_quota = True
     ceph_auth_type = None
     multicloud = False
+    user_checker = "openstack"
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "otherfile=", "nocephquota", "ceph-keystone-s3", "ceph-native-s3", "nocinderquota","multicloud"])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["debug", "norun", "nihfile=", "otherfile=", "nocephquota", "ceph-keystone-s3", "ceph-native-s3", "nocinderquota","multicloud","notukey"])
     except getopt.GetoptError:
         sys.stderr.write("ERROR: Getopt\n")
         sys.exit(2)
@@ -672,6 +707,7 @@ if __name__ == "__main__":
 
         #I fail at a good flow for creating new tenant+user combo vs existing tenant+new user
         user_created = None
+        user_exists = None
         
         if nih_file or other_file:
             if nih_file and ( fields['eRA_Commons_username'].upper()  in nih_approved_users):
@@ -692,11 +728,10 @@ if __name__ == "__main__":
         approved_members.add(username)
         if debug:
             print "DEBUG: Username (%s) added to approved_members." % (username) 
-        
-        try:
-            user_exists = pwd.getpwnam(username)
-        except:
-            user_exists = None
+       
+        user_exists = get_user_exists(username=username)
+        if debug:
+            print "DEBUG: Username %s exists? %s " % (username,user_exists) 
 
         if not user_exists:
             if debug:
@@ -707,10 +742,10 @@ if __name__ == "__main__":
                     if fields['quota_leader']:
                         #Will create the new tenant
                         print "INFO: Creating new tenant %s" % (fields['tenant'])
-                        if create_tenant(tenant=fields['tenant'], debug=debug,run=run):
+                        if create_project(tenant=fields['tenant'], debug=debug,run=run):
                             print "INFO: Creating users %s" % username
                             user_created = create_user(username=username,cloud=settings['general']['cloud'], fields=fields, is_nih_cloud=is_nih_cloud, debug=debug, run=run)
-                            add_member_to_tenant(role='quota_leader', tenant=fields['tenant'],users=[username], debug=debug, run=run)
+                            add_member_to_project(role='quota_leader', project=fields['tenant'],users=[username], debug=debug, run=run)
                             if create_s3_creds:
                                 create_ceph_s3_creds(tenant=fields['tenant'],username=username,ceph_auth_type=ceph_auth_type,debug=debug,run=run)
                         else:
