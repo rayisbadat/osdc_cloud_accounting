@@ -160,16 +160,21 @@ if __name__ == "__main__":
 
     project=args[0]
     username=args[1]
+    try: 
+        access_type=args[2]
+    except:
+        access_type="full"
+
 
 
 
 if not get_ceph_s3_key(project, username, user_type="project",  debug=debug,run=run):
-    create_ceph_s3_user(project, username, user_type="project", debug=debug,run=run) 
+    create_ceph_s3_user(project, username, user_type="project", access_type=access_type, debug=debug,run=run) 
 
 user_keys=get_ceph_s3_key(project, username, user_type="subuser", debug=debug,run=run) 
 
 if not user_keys:
-    create_ceph_s3_user(project, username, user_type="subuser", debug=debug,run=run) 
+    create_ceph_s3_user(project, username, user_type="subuser", access_type=access_type, debug=debug,run=run) 
     user_keys=get_ceph_s3_key(project, username, user_type="subuser", debug=debug,run=run) 
 
 write_s3_creds_to_file(project,username, user_keys=user_keys,debug=debug,run=run)
