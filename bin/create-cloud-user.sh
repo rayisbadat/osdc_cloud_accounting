@@ -50,4 +50,7 @@ echo "export OS_PASSWORD=$PASSWORD" >> $credential_file
 echo "export OS_AUTH_URL=\"${IDENTITY_URL}/\"" >> $credential_file
 echo "export OS_IDENTITY_API_VERSION=$IDENTITY_API_VERSION" >> $credential_file
 echo "export OS_IMAGE_API_VERSION=$IMAGE_API_VERSION" >> $credential_file
-
+#Defaults
+echo 'export OS_DOMAIN_NAME="default"' >> $credential_file
+echo 'export OS_PROJECT_DOMAIN_NAME="default"' >> $credential_file
+echo 'export OS_USER_DOMAIN_NAME="default"' >> $credential_file
