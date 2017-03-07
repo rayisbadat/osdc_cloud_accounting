@@ -11,7 +11,6 @@ class SalesForceOCC:
         self.svc = beatbox.Client()
         self.partnerNS = beatbox._tPartnerNS
         self.objectNS = beatbox._tSObjectNS
-        self.soapNS = beatbox._tSoapNS
         self.contacts = {}
         self.contact_ids = []
 
