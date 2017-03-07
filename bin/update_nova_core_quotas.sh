@@ -36,4 +36,13 @@ cores_int=$(awk  "BEGIN { rounded = sprintf(\"%.0f\", $CORES); print rounded }")
 instances=${cores_int}
 
 openstack quota set --cores $cores_int --instances $instances --fixed-ips $instances $PROJECT &>/dev/null
-neutron quota-update --port $instances --tenant_id $( openstack project show  $PROJECT -fshell | grep '^id="' | cut -f2 -d'"' ) &>/dev/null
+
+neutron net-list &>/dev/null
+if [ "$?" == "0" ]
+then
+    neutron quota-update --port $instances --tenant_id $( openstack project show  $PROJECT -fshell | grep '^id="' | cut -f2 -d'"' ) &>/dev/null
+else
+    tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep " $TENANT_NAME " | perl -ne 'm/\|\s(\S+)\s/ && print "$1
+    "')
+    nova quota-update  --force --fixed-ips $instances $tennant_id
+fi
