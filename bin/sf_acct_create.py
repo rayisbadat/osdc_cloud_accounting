@@ -11,7 +11,50 @@ import  os
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
+from keystoneclient.auth.identity import v3
+from keystoneclient.auth.identity import v2
+from keystoneclient import session
+from keystoneclient.v3 import client #, users, role_assignments, roles
 
+def get_project_members_v2(project,debug=None):
+    """ Return list of users in a tenant, the client API wants the user we run as to be a member of every tenant we query :( """
+    #load in Admin creds
+    #Get the ENV overrides
+    admin_auth_creds = dict()
+    admin_auth_creds['username'] = os.environ.get('OS_USERNAME')
+    admin_auth_creds['password'] = os.environ.get('OS_PASSWORD')
+    admin_auth_creds['auth_url'] = os.environ.get('OS_AUTH_URL')
+    if os.environ.get('OS_TENANT_NAME'):
+        admin_auth_creds['tenant_name'] = os.environ.get('OS_TENANT_NAME')
+    elif os.environ.get('OS_PROJECT_NAME'):
+        admin_auth_creds['project_name'] = os.environ.get('OS_PROJECT_NAME')
+    if os.environ.get('OS_PROJECT_DOMAIN_NAME'):
+        admin_auth_creds['project_domain_name'] = os.environ.get('OS_PROJECT_DOMAIN_NAME')
+
+    #RAY FIXME: This works for Liberty, might need v3 for mitaka?
+    ## Index of the  auth_url endpoint ?
+    auth = v2.Password(**admin_auth_creds)
+    sess = session.Session(auth=auth)
+    keystone_client = client.Client(session=sess)
+
+    #Find the project's id
+    for kp in keystone_client.projects.list():
+        if kp.name == project:
+            project_id = kp.id
+    #Find _member_ role id
+    for kr in keystone_client.roles.list():
+        if kr.name == "_member_":
+            role_id = kr.id
+
+    #Get assignments
+    user_names = set()
+    for assignment in keystone_client.role_assignments.list(project=project_id, role=role_id):
+        if hasattr(assignment, 'user'):
+            user_names.add( keystone_client.users.get( user=assignment.user['id'] ).name )
+
+    return user_names
+    
+        
 def create_ceph_s3_creds(tenant, username, ceph_auth_type=None,  debug=None, run=None):
     """ Create the s3creds for a the tenant, generally only called for quota leader
         user_type: [keystone]|ceph .If object store uses keystone or ceph method for user creation.  
@@ -72,20 +115,6 @@ def create_project(tenant, debug=None, run=None, domain='default'):
 
 def create_user(username,cloud,fields,is_nih_cloud=False,debug=None,run=None):
     """ Call create user script """
-    ##This covers both NIHLogin users (since they use nih.gov creds
-    ### and eracommons users, since their urn:mace:incommon:nih.gov{...}!USERNAME
-    ##the fact i am not geralizing it is sad.  
-    ##if is_nih_cloud and "nih.gov" not in  str(fields['login_identifier']).lower():
-    #    if fields['Authentication_Method'] == 'OpenID':
-    #        method = 'openid-pdc-none-nih-idp'
-    #    else:
-    #        method = 'shibboleth-pdc-none-nih-idp'
-    #
-    #else:
-    #    if fields['Authentication_Method'] == 'OpenID':
-    #        method = 'openid'
-    #    else:
-    #        method = 'shibboleth'
     if fields['Authentication_Method'] == 'OpenID':
         method = 'openid'
     else:
@@ -93,7 +122,6 @@ def create_user(username,cloud,fields,is_nih_cloud=False,debug=None,run=None):
     
     
     #If we have an identifier use that, otherwise fallback to email
-    #if fields['login_identifier'] == '' or fields['login_identifier'] == None ora not fields['login_identifier']:
     if not fields['login_identifier']:
         login_identifier = fields['Email']
     else:
@@ -212,70 +240,6 @@ def toggle_user_locks(approved_members=None, starting_uid=1500, debug=None):
             sys.stderr.write("Error: %s user %s\n" % (operation,username))
             sys.stderr.write("%s\n" % e.output)
 
-
-def get_project_members(project=None,users_cloud=None,debug=None):
-    """ Return list of users in a tenant, the client API wants the user we run as to be a member of every tenant we query :( """
-
-    #query = """select a.name as User_Name
-    #    from keystone.project a
-    #        join keystone.assignment b
-    #            on b.target_id = a.id
-    #        join keystone.local_user c
-    #            on b.actor_id = c.id
-    #    where 
-    #        a.name='%s'
-    #    """ % (project)    
-
-    query = """select c.name as User_Name
-        from keystone.project a
-            join keystone.assignment b
-                on b.target_id = a.id
-            join keystone.local_user c
-                on b.actor_id = c.user_id
-        where
-            a.name='%s';  
-        """ % (project)
-
-    #if users_cloud:
-    #    query += """ and c.extra like '{"email": "CLOUD:%s,%%'""" % (users_cloud)
-
-    members = set()
-
-    if debug:
-        print query
-
-    try:
-        conn = db_connect(settings['accounts']['novadb'])
-        s = text(query)
-        results = conn.execute(s)
-    except SQLAlchemyError as e:
-        sys.stderr.write("ERROR-NUR: Erroring querying the databases: %s\n" % (e) )
-        sys.exit(1)
-
-
-    for row in results:
-        try:
-            members.add(row[0])
-        except KeyError:
-            pass
-        except ValueError:
-            pass
-
-    return members
-    
-def db_connect(db):
-    try:
-        dsn = "mysql://%s:%s@%s/%s" % (settings['accounts']['db_user'],
-            settings['accounts']['db_passwd'], settings['accounts']['db_server'], db)
-        engine = create_engine(dsn)
-        return engine.connect()
-
-    except SQLAlchemyError, e:
-        sys.stderr.write("Error %s" % (e))
-        sys.exit(1)
-
-
-        
 def remove_member_from_tenant(tenant=None, users=None, role="_member_", debug=None, run=None):
     """  Remove users from the tenant """
     for user in users:
@@ -347,7 +311,7 @@ def adjust_managed_tenants(managed_tenants=None,users_cloud=None,ceph_auth_type=
         #Intersection of CSV and SalesForce
         approved_tenant_members = csv_tenant_members.intersection( approved_members )
         #Current users in tenant
-        current_tenant_members = get_project_members(project=tenant_name,users_cloud=users_cloud,debug=debug)
+        current_tenant_members = get_project_members_v2(project=tenant_name,debug=debug)
         #Keep these user in tenant, they are still valid
         valid_tenant_members = current_tenant_members.intersection(approved_tenant_members)
         #We need to remove these users from the tenant
@@ -386,8 +350,6 @@ def adjust_tenants(members_list=None,list_of_approved_user_names=None,users_clou
         if debug:
             print "DEBUG: adjusting_tenants tenant_members for tenant %s" %(tenant)
             pprint.pprint(tenant_members[tenant])  
-            #print "DEBUG: adjusting_tenants list_of_approved_user_names"
-            #pprint.pprint(list_of_approved_user_names)  
 
         if list_of_approved_user_names is not None:
             members=set( tenant_members[tenant] ) & set(list_of_approved_user_names)
@@ -399,7 +361,7 @@ def adjust_tenants(members_list=None,list_of_approved_user_names=None,users_clou
             pprint.pprint(members)  
 
         #Build lists of who is currently, needs to be added, needs to be removed
-        current_members=get_project_members(tenant,users_cloud=users_cloud,debug=debug)
+        current_members=get_project_members_v2(tenant,debug=debug)
         members_to_add=set(members)-set(current_members)
         members_to_remove=set(current_members)-set(members)
 
@@ -528,10 +490,6 @@ def load_in_other_file(other_file=None,debug=None):
                     #add in phsid to array
                     other_approved_users[row['login'].lower()].append(row['phsid'])
 
-                    ##Create a list of who belongs to what managed tenant for later parsing
-                    ##if row['phsid'].split(".")[0] in settings['accounts']['managed_tenants']:
-                    ##    managed_tenants[row['phsid'].split(".")[0]].add(row['login'].upper())
-
                 if debug:
                     print "DEBUG: load_in_other_file : other_approved_users" 
                     pprint.pprint(other_approved_users)
@@ -644,10 +602,11 @@ if __name__ == "__main__":
         # Loop through managed tenants in config and initialize
         #Setting to set() since we need to do intersections and differences
         for managed_tenant in settings['accounts']['managed_tenants']:
-            managed_tenants[managed_tenant]=set()
-            if debug:
-                print "DEBUG: created managed tenant: %s" % (managed_tenant)
-                pprint.pprint( managed_tenants )
+            if managed_tenant:
+                managed_tenants[managed_tenant]=set()
+                if debug:
+                    print "DEBUG: created managed tenant: %s" % (managed_tenant)
+                    pprint.pprint( managed_tenants )
     except:
         pass
 
@@ -655,7 +614,7 @@ if __name__ == "__main__":
         users_cloud = settings['general']['cloud']
     else:
         users_cloud = None
-    
+
 
 
     #Load up a list of the users in SF that are approved for this cloud
@@ -800,6 +759,7 @@ if __name__ == "__main__":
     toggle_user_locks(approved_members=approved_members,starting_uid=starting_uid,debug=debug) 
 
     print "Adjusting managed tenant membership:" 
-    adjust_managed_tenants(managed_tenants=managed_tenants,users_cloud=users_cloud,ceph_auth_type=ceph_auth_type, debug=debug,run=run)
+    if managed_tenants:
+        adjust_managed_tenants(managed_tenants=managed_tenants,users_cloud=users_cloud,ceph_auth_type=ceph_auth_type, debug=debug,run=run)
 
     
