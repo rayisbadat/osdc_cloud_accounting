@@ -42,7 +42,6 @@ if [ "$?" == "0" ]
 then
     neutron quota-update --port $instances --tenant_id $( openstack project show  $PROJECT -fshell | grep '^id="' | cut -f2 -d'"' ) &>/dev/null
 else
-    tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep " $TENANT_NAME " | perl -ne 'm/\|\s(\S+)\s/ && print "$1
-    "')
+    tennant_id=$(/usr/bin/keystone tenant-list 2>/dev/null | grep " $PROJECT " | perl -ne 'm/\|\s(\S+)\s/ && print "$1"')
     nova quota-update  --force --fixed-ips $instances $tennant_id
 fi
