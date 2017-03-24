@@ -34,7 +34,12 @@ fi
 set -e
 set -u
 
-openstack user create --domain $DOMAIN --project $PROJECT --password $PASSWORD --email $EMAIL $USERNAME
+if [ "$DOMAIN" != "" ]
+then
+    openstack user create --domain $DOMAIN --project $PROJECT --password $PASSWORD --email $EMAIL $USERNAME
+else
+    openstack user create  --project $PROJECT --password $PASSWORD --email $EMAIL $USERNAME
+fi
 openstack role add --user $USERNAME --project $PROJECT $ROLE
                                         
 credential_file="$HOME_DIR/.novarc"

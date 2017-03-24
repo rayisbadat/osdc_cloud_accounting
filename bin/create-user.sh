@@ -38,13 +38,13 @@ set -u
 
 HOME_DIR="${HOME_DIR_ROOT}/$USERNAME"
 
-#/usr/local/sbin/create-ldap-user.sh "$NAME" "$USERNAME" "$PASSWD" "$HOME_DIR"
-#if [ $? -ne 0 ]
-#then
-#	echo "$0: create ldap user failed!"
-#    echo /usr/local/sbin/create-ldap-user.sh "$NAME" "$USERNAME" "$PASSWD" "$HOME_DIR"
-#	exit 1	
-#fi
+/usr/local/sbin/create-ldap-user.sh "$NAME" "$USERNAME" "$PASSWD" "$HOME_DIR"
+if [ $? -ne 0 ]
+then
+	echo "$0: create ldap user failed!"
+    echo /usr/local/sbin/create-ldap-user.sh "$NAME" "$USERNAME" "$PASSWD" "$HOME_DIR"
+	exit 1	
+fi
 
 /usr/local/sbin/create-cloud-user.sh "$USERNAME" "$TENANT" "$PASSWD" "$EMAIL" "$HOME_DIR"
 if [ $? -ne 0 ]
@@ -54,11 +54,11 @@ then
     exit 1
 fi
 
-#/usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$TUKEY_CLOUD_NAME"
-#if [ $? -ne 0 ]
-#then
-#	echo "$0: create-gui-creds failed"
-#    echo /usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
-#    exit 1
-#fi
+/usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$TUKEY_CLOUD_NAME"
+if [ $? -ne 0 ]
+then
+	echo "$0: create-gui-creds failed"
+    echo /usr/local/sbin/create-gui-creds.sh "$USERNAME" "$PASSWD" "$EMAIL" "$METHOD" "$CLOUD" 
+    exit 1
+fi
 

@@ -98,11 +98,15 @@ def tenant_exist(tenant):
         return False
 
 
-def create_project(tenant, debug=None, run=None, domain='default'):
+def create_project(tenant, debug=None, run=None, domain=None):
     """ call the bash scripts to create tenants """
     if run:
         try:
-            cmd = ['openstack','project', 'create', '--domain=%s'%(domain), '%s'%(tenant)]
+            if domain:
+                cmd = ['openstack','project', 'create', '--domain=%s'%(domain), '%s'%(tenant)]
+            else:
+                cmd = ['openstack','project', 'create', '%s'%(tenant)]
+                
             subprocess.check_call( cmd , stdout=open(os.devnull, 'wb'),stderr=open(os.devnull, 'wb') )
             return True
         except subprocess.CalledProcessError, e:
@@ -267,7 +271,7 @@ def remove_member_from_tenant(tenant=None, users=None, role="_member_", debug=No
                 sys.stderr.write("%s\n" % e.output)
         
 
-def add_member_to_project(project=None, users=None, role="_member_", ceph_auth_type=None, debug=None, run=None,create_s3_creds=False, domain='default'):
+def add_member_to_project(project=None, users=None, role="_member_", ceph_auth_type=None, debug=None, run=None,create_s3_creds=False, domain=None):
     """ Add users to the project """  
     for user in users:
         print "INFO: Adding user %s to project %s" % (user, project)
@@ -327,7 +331,7 @@ def adjust_managed_tenants(managed_tenants=None,users_cloud=None,ceph_auth_type=
             pprint.pprint( additional_tenant_members ) 
        
         remove_member_from_tenant(tenant=tenant_name, users=invalid_tenant_members, debug=debug, run=run)
-        add_member_to_project(project=tenant_name, users=additional_tenant_members,ceph_auth_type=ceph_auth_type, debug=debug, run=run)
+        add_member_to_project(project=tenant_name, users=additional_tenant_members,ceph_auth_type=ceph_auth_type, domain=settings['openstack']['domain'], debug=debug, run=run)
 
 def adjust_tenants(members_list=None,list_of_approved_user_names=None,users_cloud=None,ceph_auth_type=None,debug=None,run=None,create_s3_creds=False):
     #Build tenant lists
@@ -379,7 +383,7 @@ def adjust_tenants(members_list=None,list_of_approved_user_names=None,users_clou
             pprint.pprint( members_to_remove )
 
         #remove and add as needed
-        add_member_to_project(project=tenant, users=members_to_add, role="_member_", debug=debug, run=run, ceph_auth_type=ceph_auth_type, create_s3_creds=create_s3_creds)
+        add_member_to_project(project=tenant, users=members_to_add, role="_member_", debug=debug, run=run, ceph_auth_type=ceph_auth_type, create_s3_creds=create_s3_creds,domain=settings['openstack']['domain'])
         remove_member_from_tenant(tenant=tenant, users=members_to_remove, role="_member_", debug=debug, run=run)
         
 
@@ -584,7 +588,7 @@ if __name__ == "__main__":
     #read in settings
     Config = ConfigParser.ConfigParser()
     Config.read("/etc/osdc_cloud_accounting/settings.py")
-    sections = ['general','salesforceocc','tukey', 'accounts']
+    sections = ['general','salesforceocc','tukey', 'accounts','openstack']
     settings = {}
     for section in sections:
         options = Config.options(section)
@@ -592,6 +596,8 @@ if __name__ == "__main__":
         for option in options:
             try:
                 settings[section][option] = Config.get(section, option)
+                if settings[section][option]=='None':
+                    settings[section][option] = None
             except:
                 sys.stderr.write("exception on [%s] %s!" % section, option)
 
@@ -718,10 +724,10 @@ if __name__ == "__main__":
                     if fields['quota_leader']:
                         #Will create the new tenant
                         print "INFO: Creating new tenant %s" % (fields['tenant'])
-                        if create_project(tenant=fields['tenant'], debug=debug,run=run):
+                        if create_project(tenant=fields['tenant'], debug=debug,run=run,domain=settings['openstack']['domain']):
                             print "INFO: Creating users %s" % username
                             user_created = create_user(username=username,cloud=settings['general']['cloud'], fields=fields, is_nih_cloud=is_nih_cloud, debug=debug, run=run)
-                            add_member_to_project(role='quota_leader', project=fields['tenant'],users=[username], debug=debug, run=run)
+                            add_member_to_project(role='quota_leader', project=fields['tenant'],users=[username], debug=debug, run=run,domain=settings['openstack']['domain'])
                             if create_s3_creds:
                                 create_ceph_s3_creds(tenant=fields['tenant'],username=username,ceph_auth_type=ceph_auth_type,debug=debug,run=run)
                         else:
