@@ -11,10 +11,14 @@ import  os
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from keystoneclient.auth.identity import v3
-from keystoneclient.auth.identity import v2
-from keystoneclient import session
+#from keystoneclient.auth.identity import v3
+#from keystoneclient.auth.identity import v2
+#from keystoneclient import session
 from keystoneclient.v3 import client #, users, role_assignments, roles
+
+from keystoneauth1.identity import v3
+from keystoneauth1 import session
+from keystoneclient.v3 import client
 
 def get_project_members_v2(project,debug=None):
     """ Return list of users in a tenant, the client API wants the user we run as to be a member of every tenant we query :( """
@@ -24,19 +28,25 @@ def get_project_members_v2(project,debug=None):
     admin_auth_creds['username'] = os.environ.get('OS_USERNAME')
     admin_auth_creds['password'] = os.environ.get('OS_PASSWORD')
     admin_auth_creds['auth_url'] = os.environ.get('OS_AUTH_URL')
-    if os.environ.get('OS_TENANT_NAME'):
+    if os.environ.get('OS_TENANT_NAME') and not os.environ.get('OS_PROJECT_NAME'):
         admin_auth_creds['tenant_name'] = os.environ.get('OS_TENANT_NAME')
     elif os.environ.get('OS_PROJECT_NAME'):
         admin_auth_creds['project_name'] = os.environ.get('OS_PROJECT_NAME')
     if os.environ.get('OS_PROJECT_DOMAIN_NAME'):
         admin_auth_creds['project_domain_name'] = os.environ.get('OS_PROJECT_DOMAIN_NAME')
+    if os.environ.get('OS_USER_DOMAIN_NAME'):
+        admin_auth_creds['user_domain_name'] = os.environ.get('OS_USER_DOMAIN_NAME')
 
     #RAY FIXME: This works for Liberty, might need v3 for mitaka?
     ## Index of the  auth_url endpoint ?
-    auth = v2.Password(**admin_auth_creds)
+    #auth = v2.Password(**admin_auth_creds)
+    #sess = session.Session(auth=auth)
+    #keystone_client = client.Client(session=sess)
+
+    auth = v3.Password( **admin_auth_creds )
     sess = session.Session(auth=auth)
     keystone_client = client.Client(session=sess)
-
+    
     #Find the project's id
     for kp in keystone_client.projects.list():
         if kp.name == project:

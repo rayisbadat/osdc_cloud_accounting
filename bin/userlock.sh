@@ -62,12 +62,15 @@ toggle_user_in_keystone() {
 
     if [ "$operation" == "unlock" ] 
     then
-        keystone_op="true"
+        #keystone_op="true"
+        keystone_op="enable"
     else
-        keystone_op="false"
+        #keystone_op="false"
+        keystone_op="disable"
     fi
 
-    keystone user-update --enabled $keystone_op  $username &>/dev/null
+    #keystone user-update --enabled $keystone_op  $username &>/dev/null
+    openstack user set --${keystone_op} $username &>/dev/null 
     if [ "$?" -ne "0" ]
     then
         echo "keystone failed to toggle enable/disable for user $username"
