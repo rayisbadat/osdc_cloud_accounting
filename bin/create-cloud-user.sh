@@ -46,7 +46,7 @@ credential_file="$HOME_DIR/.novarc"
 [ ! -e $HOME_DIR ] && mkdir $HOME_DIR  
 touch $credential_file
 
-IDENTITY_URL=$(openstack catalog show keystone -f shell | perl -ne 'm|public:\s*(h\S+)| && print "$1\n"')
+IDENTITY_URL=$(openstack catalog show keystone -f shell | perl -ne 'm|public(?:\S+)?:\s*(h\S+)| && print "$1\n"')
 
 echo "export OS_PROJECT_NAME=$PROJECT" >> $credential_file
 echo "export OS_TENANT_NAME=$PROJECT" >> $credential_file
@@ -56,6 +56,6 @@ echo "export OS_AUTH_URL=\"${IDENTITY_URL}/\"" >> $credential_file
 [ "$IDENTITY_API_VERSION" != "" ] && echo "export OS_IDENTITY_API_VERSION=$IDENTITY_API_VERSION" >> $credential_file
 [ "$IMAGE_API_VERSION" != "" ] && echo "export OS_IMAGE_API_VERSION=$IMAGE_API_VERSION" >> $credential_file
 #Defaults
-[ "$DOMAIN" != "" ] && echo 'export OS_DOMAIN_NAME="default"' >> $credential_file
-[ "$DOMAIN" != "" ] && echo 'export OS_PROJECT_DOMAIN_NAME="default"' >> $credential_file
-[ "$DOMAIN" != "" ] && echo 'export OS_USER_DOMAIN_NAME="default"' >> $credential_file
+[ "$DOMAIN" != "" ] && echo 'export OS_DOMAIN_NAME="default"' >> $credential_file; true
+[ "$DOMAIN" != "" ] && echo 'export OS_PROJECT_DOMAIN_NAME="default"' >> $credential_file; true
+[ "$DOMAIN" != "" ] && echo 'export OS_USER_DOMAIN_NAME="default"' >> $credential_file; true
