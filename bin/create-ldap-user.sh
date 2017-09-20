@@ -42,9 +42,14 @@ create_user() {
     chmod o-rwx $HOME_DIR &>/dev/null
 }
 
+create_qrcode() {
+    reset_totp.sh $USERNAME
+}
+
 ##Actually run commands
 create_user
 #Yes this is neccessary because something is stupid.  Turn it off or dont recycle
 ## And randomly getent function will give inconsistant results from ldap.
 [ -x '/etc/init.d/nscd' ] && /etc/init.d/nscd restart &>/dev/null
 
+create_qrcode
