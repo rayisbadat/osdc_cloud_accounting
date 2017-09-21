@@ -36,11 +36,11 @@ set -u
 
 if [ "$DOMAIN" != "" ]
 then
-    openstack user create --domain $DOMAIN --project $PROJECT --password $PASSWORD --email $EMAIL $USERNAME
+    openstack user create --domain $DOMAIN --project $PROJECT --password $PASSWORD --email $EMAIL $USERNAME > /dev/null
 else
-    openstack user create  --project $PROJECT --password $PASSWORD --email $EMAIL $USERNAME
+    openstack user create  --project $PROJECT --password $PASSWORD --email $EMAIL $USERNAME > /dev/null
 fi
-openstack role add --user $USERNAME --project $PROJECT $ROLE
+openstack role add --user $USERNAME --project $PROJECT $ROLE  > /dev/null
                                         
 credential_file="$HOME_DIR/.novarc"
 [ ! -e $HOME_DIR ] && mkdir $HOME_DIR  

@@ -43,7 +43,7 @@ create_user() {
 }
 
 create_qrcode() {
-    reset_totp.sh $USERNAME
+    /usr/local/sbin/reset_totp.sh $USERNAME
 }
 
 ##Actually run commands
